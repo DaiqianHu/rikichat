@@ -4,7 +4,7 @@ import logging
 import requests
 import openai
 import copy
-from azure.identity import DefaultAzureCredential
+from azure.identity import AzureCliCredential, ChainedTokenCredential, ManagedIdentityCredential
 from base64 import b64encode
 from flask import Flask, Response, request, jsonify, send_from_directory
 from dotenv import load_dotenv
@@ -530,10 +530,19 @@ def stream_without_data(response, history_metadata={}):
 
 
 def conversation_without_data(request_body):
+    api_key = ""
+
+    if DEBUG_LOGGING:
+        api_key = AZURE_OPENAI_KEY
+    else:
+        credential = ChainedTokenCredential(ManagedIdentityCredential())
+        access_token = credential.get_token("https://cognitiveservices.azure.com/.default")
+        api_key = access_token.token
+    
     openai.api_type = "azure"
     openai.api_base = AZURE_OPENAI_ENDPOINT if AZURE_OPENAI_ENDPOINT else f"https://{AZURE_OPENAI_RESOURCE}.openai.azure.com/"
     openai.api_version = "2023-08-01-preview"
-    openai.api_key = AZURE_OPENAI_KEY
+    openai.api_key = api_key
 
     request_messages = request_body["messages"]
     messages = [
