@@ -551,7 +551,7 @@ def conversation_without_data(request_body):
         api_key = Token.token
 
         if DEBUG_LOGGING:
-            logging.debug(f"Token expires at: {datetime.datetime.fromtimestamp(Token.expires_on)}, Token: {Token.token}")
+            logging.debug(f"Token expires at: {datetime.datetime.fromtimestamp(Token.expires_on)}")
     else:
         openai.api_type = "azure"
         api_key = AZURE_OPENAI_KEY
