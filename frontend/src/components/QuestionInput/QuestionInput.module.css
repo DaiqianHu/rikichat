@@ -19,6 +19,28 @@
     margin-right: 12px;
 }
 
+.questionMicrophoneButtonContainer {
+    position: absolute;
+    right: 76px;
+    bottom: 20px;
+}
+
+.questionMicrophonedButton {
+    width: 24px;
+    height: 23px;
+}
+
+.questionFileUploadButtonContainer {
+    position: absolute;
+    right: 50px;
+    bottom: 20px;
+}
+
+.questionFileUploadButton {
+    width: 24px;
+    height: 23px;
+}
+
 .questionInputSendButtonContainer {
     position: absolute;
     right: 24px;
