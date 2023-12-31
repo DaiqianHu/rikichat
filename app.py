@@ -5,7 +5,7 @@ import logging
 import requests
 import openai
 import copy
-from azure.identity import DefaultAzureCredential, AzureCliCredential
+from azure.identity import ChainedTokenCredential, ManagedIdentityCredential, AzureCliCredential, DefaultAzureCredential
 from base64 import b64encode
 from flask import Flask, Response, request, jsonify, send_from_directory
 from dotenv import load_dotenv
@@ -40,7 +40,7 @@ USE_MSI = os.environ.get("USE_MSI", "false")
 
 # MSI Token
 Token = None
-DefaultCredential = DefaultAzureCredential()
+Credential = ChainedTokenCredential(ManagedIdentityCredential(), AzureCliCredential())
 
 # On Your Data Settings
 DATASOURCE_TYPE = os.environ.get("DATASOURCE_TYPE", "AzureCognitiveSearch")
@@ -539,12 +539,19 @@ def conversation_without_data(request_body):
     api_key = None
 
     if USE_MSI == "true":
+        if DEBUG_LOGGING:
+            logging.debug("Using MSI Authentication")
+
         openai.api_type = "azure_ad"
 
         # Check if Azure token is still valid
+        global Token
         if not Token or datetime.datetime.fromtimestamp(Token.expires_on) < datetime.datetime.now():
-            Token = DefaultCredential.get_token("https://cognitiveservices.azure.com")
-        api_key = Token
+            Token = Credential.get_token("https://cognitiveservices.azure.com")
+        api_key = Token.token
+
+        if DEBUG_LOGGING:
+            logging.debug(f"Token expires at: {datetime.datetime.fromtimestamp(Token.expires_on)}, Token: {Token.token}")
     else:
         openai.api_type = "azure"
         api_key = AZURE_OPENAI_KEY
