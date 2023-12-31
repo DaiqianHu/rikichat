@@ -1,10 +1,11 @@
+import datetime
 import json
 import os
 import logging
 import requests
 import openai
 import copy
-from azure.identity import AzureCliCredential, ChainedTokenCredential, ManagedIdentityCredential
+from azure.identity import DefaultAzureCredential, AzureCliCredential
 from base64 import b64encode
 from flask import Flask, Response, request, jsonify, send_from_directory
 from dotenv import load_dotenv
@@ -34,6 +35,12 @@ DEBUG = os.environ.get("DEBUG", "false")
 DEBUG_LOGGING = DEBUG.lower() == "true"
 if DEBUG_LOGGING:
     logging.basicConfig(level=logging.DEBUG)
+
+USE_MSI = os.environ.get("USE_MSI", "false")
+
+# MSI Token
+Token = None
+DefaultCredential = DefaultAzureCredential()
 
 # On Your Data Settings
 DATASOURCE_TYPE = os.environ.get("DATASOURCE_TYPE", "AzureCognitiveSearch")
@@ -116,7 +123,6 @@ ELASTICSEARCH_EMBEDDING_MODEL_ID = os.environ.get("ELASTICSEARCH_EMBEDDING_MODEL
 # Frontend Settings via Environment Variables
 AUTH_ENABLED = os.environ.get("AUTH_ENABLED", "true").lower()
 frontend_settings = { "auth_enabled": AUTH_ENABLED }
-
 
 # Initialize a CosmosDB client with AAD auth and containers for Chat History
 cosmos_conversation_client = None
@@ -530,16 +536,19 @@ def stream_without_data(response, history_metadata={}):
 
 
 def conversation_without_data(request_body):
-    api_key = ""
+    api_key = None
 
-    if DEBUG_LOGGING:
-        api_key = AZURE_OPENAI_KEY
+    if USE_MSI == "true":
+        openai.api_type = "azure_ad"
+
+        # Check if Azure token is still valid
+        if not Token or datetime.datetime.fromtimestamp(Token.expires_on) < datetime.datetime.now():
+            Token = DefaultCredential.get_token("https://cognitiveservices.azure.com")
+        api_key = Token
     else:
-        credential = ChainedTokenCredential(ManagedIdentityCredential())
-        access_token = credential.get_token("https://cognitiveservices.azure.com/.default")
-        api_key = access_token.token
+        openai.api_type = "azure"
+        api_key = AZURE_OPENAI_KEY
     
-    openai.api_type = "azure"
     openai.api_base = AZURE_OPENAI_ENDPOINT if AZURE_OPENAI_ENDPOINT else f"https://{AZURE_OPENAI_RESOURCE}.openai.azure.com/"
     openai.api_version = "2023-08-01-preview"
     openai.api_key = api_key
