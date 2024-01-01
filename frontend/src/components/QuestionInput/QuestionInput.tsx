@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Stack, TextField, PrimaryButton } from "@fluentui/react";
+import React, { useRef } from 'react';
+import { Stack, TextField } from "@fluentui/react";
 import { SendRegular } from "@fluentui/react-icons";
 import Send from "../../assets/Send.svg";
 import FileUpload from "../../assets/FileUpload.svg";
@@ -44,6 +45,22 @@ export const QuestionInput = ({ onSend, disabled, placeholder, clearOnSend, conv
         setQuestion(newValue || "");
     };
 
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleFileUploadClick = () => {
+        if (fileInputRef.current) {
+            fileInputRef.current.click();
+        }
+    };
+
+    const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (event.target.files && event.target.files.length > 0) {
+            const file = event.target.files[0];
+            console.log(file);
+            // handle the file here
+        }
+    };
+
     const sendQuestionDisabled = disabled || !question.trim();
 
     return (
@@ -69,9 +86,11 @@ export const QuestionInput = ({ onSend, disabled, placeholder, clearOnSend, conv
                 role="button" 
                 tabIndex={1}
                 aria-label="File Upload button"
+                onClick={handleFileUploadClick}
             >
             <img src={FileUpload} className={styles.questionFileUploadButton}/>
             </div>
+            <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" style={{ display: 'none' }} />
             <div className={styles.questionInputSendButtonContainer} 
                 role="button" 
                 tabIndex={0}
