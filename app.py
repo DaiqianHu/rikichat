@@ -13,9 +13,6 @@ from dotenv import load_dotenv
 from backend.auth.auth_utils import get_authenticated_user_details
 from backend.history.cosmosdbservice import CosmosConversationClient
 
-from pathlib import Path
-import base64
-
 load_dotenv()
 
 app = Flask(__name__, static_folder="static")
