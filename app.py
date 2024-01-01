@@ -13,6 +13,9 @@ from dotenv import load_dotenv
 from backend.auth.auth_utils import get_authenticated_user_details
 from backend.history.cosmosdbservice import CosmosConversationClient
 
+from pathlib import Path
+import base64
+
 load_dotenv()
 
 app = Flask(__name__, static_folder="static")
@@ -557,23 +560,35 @@ def conversation_without_data(request_body):
         api_key = AZURE_OPENAI_KEY
     
     openai.api_base = AZURE_OPENAI_ENDPOINT if AZURE_OPENAI_ENDPOINT else f"https://{AZURE_OPENAI_RESOURCE}.openai.azure.com/"
-    openai.api_version = "2023-08-01-preview"
+    openai.api_version = "2023-12-01-preview"
     openai.api_key = api_key
 
     request_messages = request_body["messages"]
     messages = [
         {
             "role": "system",
-            "content": AZURE_OPENAI_SYSTEM_MESSAGE
+            "content": [{"type": "text", "text": AZURE_OPENAI_SYSTEM_MESSAGE}]
         }
     ]
 
     for message in request_messages:
         if message:
-            messages.append({
-                "role": message["role"] ,
-                "content": message["content"]
-            })
+            # check if message has key image and whether it is empty
+            if message.get("image") is None or message["image"] == "":
+                if DEBUG_LOGGING:
+                    logging.debug("No image in message")
+                messages.append({
+                    "role": message["role"],
+                    "content": [{"type": "text", "text": message["content"]}]
+                })
+            else:
+                if DEBUG_LOGGING:
+                    logging.debug(f"MESSAGE IMAGE: {message['image'][:100]}")
+                messages.append({
+                    "role": message["role"],
+                    "content": [{"type": "text", "text": message["content"]}, 
+                                {"type": "image_url", "image_url": {"url": message["image"]}}]
+                })
 
     response = openai.ChatCompletion.create(
         engine=AZURE_OPENAI_MODEL,

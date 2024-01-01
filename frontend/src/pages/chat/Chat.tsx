@@ -131,7 +131,7 @@ const Chat = () => {
         }
     }
 
-    const makeApiRequestWithoutCosmosDB = async (question: string, conversationId?: string) => {
+    const makeApiRequestWithoutCosmosDB = async (question: string, imageUrl: string, conversationId?: string) => {
         setIsLoading(true);
         setShowLoadingMessage(true);
         const abortController = new AbortController();
@@ -141,6 +141,7 @@ const Chat = () => {
             id: uuid(),
             role: "user",
             content: question,
+            image: imageUrl,
             date: new Date().toISOString(),
         };
 
@@ -221,6 +222,7 @@ const Chat = () => {
                     id: uuid(),
                     role: ERROR,
                     content: errorMessage,
+                    image: "",
                     date: new Date().toISOString()
                 }
                 conversation.messages.push(errorChatMsg);
@@ -239,7 +241,7 @@ const Chat = () => {
         return abortController.abort();
     };
 
-    const makeApiRequestWithCosmosDB = async (question: string, conversationId?: string) => {
+    const makeApiRequestWithCosmosDB = async (question: string, imageUrl: string, conversationId?: string) => {
         setIsLoading(true);
         setShowLoadingMessage(true);
         const abortController = new AbortController();
@@ -249,6 +251,7 @@ const Chat = () => {
             id: uuid(),
             role: "user",
             content: question,
+            image: imageUrl,
             date: new Date().toISOString(),
         };
 
@@ -283,6 +286,7 @@ const Chat = () => {
                     id: uuid(),
                     role: ERROR,
                     content: "There was an error generating a response. Chat history can't be saved at this time. If the problem persists, please contact the site administrator.",
+                    image: "",
                     date: new Date().toISOString()
                 }
                 let resultConversation;
@@ -385,6 +389,7 @@ const Chat = () => {
                     id: uuid(),
                     role: ERROR,
                     content: errorMessage,
+                    image: "",
                     date: new Date().toISOString()
                 }
                 let resultConversation;
@@ -499,6 +504,7 @@ const Chat = () => {
                                 id: uuid(),
                                 role: ERROR,
                                 content: errorMessage,
+                                image: "",
                                 date: new Date().toISOString()
                             }
                             if(!appStateContext?.state.currentChat?.messages){
@@ -703,8 +709,8 @@ const Chat = () => {
                                 clearOnSend
                                 placeholder="Type a new question..."
                                 disabled={isLoading}
-                                onSend={(question, id) => {
-                                    appStateContext?.state.isCosmosDBAvailable?.cosmosDB ? makeApiRequestWithCosmosDB(question, id) : makeApiRequestWithoutCosmosDB(question, id)
+                                onSend={(question, imageUrl, id) => {
+                                    appStateContext?.state.isCosmosDBAvailable?.cosmosDB ? makeApiRequestWithCosmosDB(question, imageUrl, id) : makeApiRequestWithoutCosmosDB(question, imageUrl, id)
                                 }}
                                 conversationId={appStateContext?.state.currentChat?.id ? appStateContext?.state.currentChat?.id : undefined}
                             />

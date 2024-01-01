@@ -8,7 +8,7 @@ import Microphone from "../../assets/Microphone.svg";
 import styles from "./QuestionInput.module.css";
 
 interface Props {
-    onSend: (question: string, id?: string) => void;
+    onSend: (question: string, imageUrl: string, id?: string) => void;
     disabled: boolean;
     placeholder?: string;
     clearOnSend?: boolean;
@@ -17,6 +17,8 @@ interface Props {
 
 export const QuestionInput = ({ onSend, disabled, placeholder, clearOnSend, conversationId }: Props) => {
     const [question, setQuestion] = useState<string>("");
+    const [file, setFile] = useState<File | null>(null);
+    const [imageUrl, setImageUrl] = useState<string | "">("");
 
     const sendQuestion = () => {
         if (disabled || !question.trim()) {
@@ -24,13 +26,15 @@ export const QuestionInput = ({ onSend, disabled, placeholder, clearOnSend, conv
         }
 
         if(conversationId){
-            onSend(question, conversationId);
+            onSend(question, imageUrl, conversationId);
         }else{
-            onSend(question);
+            onSend(question, imageUrl);
         }
 
         if (clearOnSend) {
             setQuestion("");
+            setFile(null);
+            setImageUrl("");
         }
     };
 
@@ -57,7 +61,14 @@ export const QuestionInput = ({ onSend, disabled, placeholder, clearOnSend, conv
         if (event.target.files && event.target.files.length > 0) {
             const file = event.target.files[0];
             console.log(file);
+
             // handle the file here
+            setFile(file);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImageUrl(reader.result as string); // reader.result contains the base64 string
+            };
+            reader.readAsDataURL(file);
         }
     };
 
