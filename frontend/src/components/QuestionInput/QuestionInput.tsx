@@ -86,6 +86,7 @@ export const QuestionInput = ({ onSend, disabled, placeholder, clearOnSend, conv
                 onChange={onQuestionChange}
                 onKeyDown={onEnterPress}
             />
+            <img src={imageUrl}/>
             <div className={styles.questionMicrophoneButtonContainer} 
                 role="button" 
                 tabIndex={2}
