@@ -606,7 +606,7 @@ const Chat = () => {
                                         {answer.role === "user" ? (
                                             <div className={styles.chatMessageUser} tabIndex={0}>
                                                 <div className={styles.chatMessageUserMessage}>{answer.content}
-                                                {answer.image && <img src={answer.image} alt="description" />}</div>
+                                                {answer.image && <img src={answer.image} alt="description" style={{ width: '100%', height: 'auto' }} />}</div>
                                             </div>
                                         ) : (
                                             answer.role === "assistant" ? <div className={styles.chatMessageGpt}>
