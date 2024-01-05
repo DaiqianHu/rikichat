@@ -19,6 +19,8 @@ export const QuestionInput = ({ onSend, disabled, placeholder, clearOnSend, conv
     const [question, setQuestion] = useState<string>("");
     const [file, setFile] = useState<File | null>(null);
     const [imageUrl, setImageUrl] = useState<string | "">("");
+    const [recording, setRecording] = useState(false);
+    const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
 
     const sendQuestion = () => {
         if (disabled || !question.trim()) {
@@ -72,6 +74,50 @@ export const QuestionInput = ({ onSend, disabled, placeholder, clearOnSend, conv
         }
     };
 
+    const handleAudioRecordingClick = () => {
+        if (recording) {
+        // Stop recording
+        mediaRecorder?.stop();
+        setRecording(false);
+        } else {
+        // Start recording
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+                const newMediaRecorder = new MediaRecorder(stream);
+                const audioChunks: BlobPart[] = [];
+
+                newMediaRecorder.ondataavailable = event => {
+                    // Collect audio data chunks while recording
+                    audioChunks.push(event.data);
+                };
+
+                newMediaRecorder.onstop = () => {
+                    // Create a Blob object from the audio data chunks when recording stops
+                    const audioData = new Blob(audioChunks, { type: 'audio/wav' });
+
+                    // Create a FormData object so we can send this audio data to our server
+                    const formData = new FormData();
+                    formData.append("audio", audioData);
+
+                    // Send the audio data to our backend
+                    fetch("/speech_to_text", {
+                        method: "POST",
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        // The response from the server contains the text of audio file
+                        console.log(data);
+                        setQuestion(data.text);
+                    });
+                };
+                newMediaRecorder.start();
+                setMediaRecorder(newMediaRecorder);
+                setRecording(true);
+            });
+        }
+    };
+
     const sendQuestionDisabled = disabled || !question.trim();
 
     return (
@@ -91,6 +137,7 @@ export const QuestionInput = ({ onSend, disabled, placeholder, clearOnSend, conv
                 role="button" 
                 tabIndex={2}
                 aria-label="Microphone button"
+                onClick={handleAudioRecordingClick}
             >
             <img src={Microphone} className={styles.questionMicrophonedButton}/>
             </div>
