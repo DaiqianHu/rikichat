@@ -903,8 +903,8 @@ def speech_to_text():
         if DEBUG_LOGGING:
             logging.debug(f"Saving audio file to temp file")
             # save file under data folder
-            audio_file.save("data/audio.wav")
-
+        
+        audio_file.save("data/audio.wav")
         audio_info = mediainfo("data/audio.wav")
         logging.debug(f"Audio file sample rate: {audio_info['sample_rate']}")
         logging.debug(f"Audio file channels: {audio_info['channels']}")
