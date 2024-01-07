@@ -1,7 +1,13 @@
 .venv
 frontend/node_modules
 .env
+.log
+.wav
 # static
 .azure/
 __pycache__/
 .ipynb_checkpoints/
+openssl-1.1.1u/
+data/
+node_modules/
+static/
