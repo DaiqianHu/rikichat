@@ -6,13 +6,11 @@ import requests
 import openai
 import copy
 from azure.identity import ChainedTokenCredential, ManagedIdentityCredential, AzureCliCredential, DefaultAzureCredential
-# import azure.cognitiveservices.speech as speechsdk
 from base64 import b64encode
 from flask import Flask, Response, request, jsonify, send_from_directory
 from dotenv import load_dotenv
 from pydub import AudioSegment
 from pydub.utils import mediainfo
-
 
 from backend.auth.auth_utils import get_authenticated_user_details
 from backend.history.cosmosdbservice import CosmosConversationClient
@@ -887,61 +885,70 @@ def get_frontend_settings():
         logging.exception("Exception in /frontend_settings")
         return jsonify({"error": str(e)}), 500  
     
-# @app.route("/speech_to_text", methods=["POST"])
-# def speech_to_text():
-#     try:
-#         if not AZURE_SPEECH_SERVICE_REGION or not AZURE_SPEECH_SERVICE_KEY:
-#             return jsonify({"error": "Azure Speech Service is not configured"}), 404
+@app.route("/speech_to_text", methods=["POST"])
+def speech_to_text():
+    try:
+        if not AZURE_SPEECH_SERVICE_REGION or not AZURE_SPEECH_SERVICE_KEY:
+            return jsonify({"error": "Azure Speech Service is not configured"}), 404
 
-#         # Get the audio file from the request
-#         audio_file = request.files.get('audio')
+        # Get the audio file from the request
+        audio_file = request.files.get('audio')
 
-#         if not audio_file:
-#             return {"error": "No audio file provided"}, 400
+        if not audio_file:
+            return {"error": "No audio file provided"}, 400
         
-#         # save the audio file to a temp file
-#         if DEBUG_LOGGING:
-#             logging.debug(f"Saving audio file to temp file")
-#             # save file under data folder
+        # save the audio file to a temp file
+        if DEBUG_LOGGING:
+            logging.debug(f"Saving audio file to temp file")
+            # save file under data folder
         
-#         audio_file.save("data/audio.wav")
-#         audio_info = mediainfo("data/audio.wav")
-#         logging.debug(f"Audio file sample rate: {audio_info['sample_rate']}")
-#         logging.debug(f"Audio file channels: {audio_info['channels']}")
-#         logging.debug(f"Audio file codec_name: {audio_info['codec_name']}")
+        audio_file.save("data/audio.wav")
+        audio_info = mediainfo("data/audio.wav")
+        logging.debug(f"Audio file sample rate: {audio_info['sample_rate']}")
+        logging.debug(f"Audio file channels: {audio_info['channels']}")
+        logging.debug(f"Audio file codec_name: {audio_info['codec_name']}")
 
-#         # Convert the audio file to the correct format
-#         audio = AudioSegment.from_file("data/audio.wav")
+        # Convert the audio file to the correct format
+        audio = AudioSegment.from_file("data/audio.wav")
 
-#         audio = audio.set_frame_rate(16000).set_channels(1).set_sample_width(2)
-#         audio.export("data/audio_converted.wav", format="wav")
+        audio = audio.set_frame_rate(16000).set_channels(1).set_sample_width(2)
+        audio.export("data/audio_converted.wav", format="wav")
 
-#         logging.debug(f"region: {AZURE_SPEECH_SERVICE_REGION}")
+        logging.debug(f"region: {AZURE_SPEECH_SERVICE_REGION}")
 
-#         speech_config = speechsdk.SpeechConfig(subscription=AZURE_SPEECH_SERVICE_KEY, region=AZURE_SPEECH_SERVICE_REGION)
-#         speech_config.set_property_by_name("OPENSSL_DISABLE_CRL_CHECK", "true")
-#         # speech_config.set_property(speechsdk.PropertyId.Speech_LogFilename, "azurespeehsdk.log")
-#         audio_config = speechsdk.audio.AudioConfig(filename="data/audio_converted.wav")
-#         speech_recognizer = speechsdk.SpeechRecognizer(speech_config=speech_config, audio_config=audio_config)
+        # call speech REST API
+        # Define the URL and headers
+        url = f"https://{AZURE_SPEECH_SERVICE_REGION}.stt.speech.microsoft.com/speech/recognition/conversation/cognitiveservices/v1?language=en-US"
+        headers = {
+            "Ocp-Apim-Subscription-Key": f"{AZURE_SPEECH_SERVICE_KEY}",
+            "Content-Type": "audio/wav",
+        }
 
-#         result = speech_recognizer.recognize_once_async().get()
-#         logging.debug(f"Speech Recognition Result: {result}")
+        # Open the audio file in binary mode
+        with open("data/audio_converted.wav", "rb") as audio_file:
+            data = audio_file.read()
 
-#         if result.reason == speechsdk.ResultReason.RecognizedSpeech:
-#             logging.debug(f"Recognized: {result.text}")
-#             return jsonify({"text": result.text}), 200
-#         elif result.reason == speechsdk.ResultReason.NoMatch:
-#             return jsonify({"error": "No speech could be recognized"}), 400
-#         elif result.reason == speechsdk.ResultReason.Canceled:
-#             cancellation_details = result.cancellation_details
-#             logging.debug(f"Speech Recognition canceled: {cancellation_details.reason}")
-#             if cancellation_details.reason == speechsdk.CancellationReason.Error:
-#                 logging.debug(f"Error details: {cancellation_details.error_details}")
-#                 return jsonify({"error": f"Speech Recognition canceled: {cancellation_details.error_details}"}), 400
-#             return jsonify({"error": "Speech Recognition canceled"}), 400
-#     except Exception as e:
-#         logging.exception("Exception in /audio/stt")
-#         return jsonify({"error": str(e)}), 500
+        # Make the POST request
+        response = requests.post(url, headers=headers, data=data)
+
+        # Check if the request was successful
+        if response.status_code == 200:
+            # Parse the JSON response
+            response_json = response.json()
+
+            # Get the recognized text
+            recognized_text = response_json.get('DisplayText')
+
+            # Print the recognized text
+            print("Recognized text:", recognized_text)
+
+            return jsonify({"text": recognized_text}), 200
+        else:
+            logging.error(f"Request failed with status code: {response.status_code}")
+            return jsonify({"error": f"Request failed with status code: {response.status_code}, text: {response}"}), 500
+    except Exception as e:
+        logging.exception("Exception in /audio/stt")
+        return jsonify({"error": str(e)}), 500
 
 def generate_title(conversation_messages):
     ## make sure the messages are sorted by _ts descending

@@ -1,4 +1,4 @@
-FROM node:20-alpine AS frontend  
+FROM node:21-alpine AS frontend  
 RUN mkdir -p /home/node/app/node_modules && chown -R node:node /home/node/app
 
 WORKDIR /home/node/app 
@@ -16,6 +16,7 @@ RUN apk add --no-cache --virtual .build-deps \
     libffi-dev \  
     openssl-dev \  
     curl \  
+    ffmpeg \
     && apk add --no-cache \  
     libpq \  
     && pip install --no-cache-dir uwsgi  
