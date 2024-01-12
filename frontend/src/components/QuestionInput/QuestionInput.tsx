@@ -5,6 +5,7 @@ import { SendRegular } from "@fluentui/react-icons";
 import Send from "../../assets/Send.svg";
 import FileUpload from "../../assets/FileUpload.svg";
 import Microphone from "../../assets/Microphone.svg";
+import MicroPhoneRecording from "../../assets/MicrophoneRecording.svg";
 import styles from "./QuestionInput.module.css";
 
 interface Props {
@@ -21,6 +22,7 @@ export const QuestionInput = ({ onSend, disabled, placeholder, clearOnSend, conv
     const [imageUrl, setImageUrl] = useState<string | "">("");
     const [recording, setRecording] = useState(false);
     const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+    const [speechToTexting, setSpeechToTexting] = useState<"converting" | "success" | "failure">("converting");
 
     const sendQuestion = () => {
         if (disabled || !question.trim()) {
@@ -92,6 +94,8 @@ export const QuestionInput = ({ onSend, disabled, placeholder, clearOnSend, conv
                 };
 
                 newMediaRecorder.onstop = () => {
+                    setSpeechToTexting("converting");
+
                     // Create a Blob object from the audio data chunks when recording stops
                     const audioData = new Blob(audioChunks, { type: 'audio/wav' });
 
@@ -107,8 +111,14 @@ export const QuestionInput = ({ onSend, disabled, placeholder, clearOnSend, conv
                     .then(response => response.json())
                     .then(data => {
                         // The response from the server contains the text of audio file
+                        setSpeechToTexting("success");
+
                         console.log(data);
                         setQuestion(data.text);
+                    })
+                    .catch(error => {
+                        console.error(error);
+                        setSpeechToTexting("failure");
                     });
                 };
                 newMediaRecorder.start();
@@ -139,7 +149,11 @@ export const QuestionInput = ({ onSend, disabled, placeholder, clearOnSend, conv
                 aria-label="Microphone button"
                 onClick={handleAudioRecordingClick}
             >
-            <img src={Microphone} className={styles.questionMicrophonedButton}/>
+                { recording ? 
+                    <img src={MicroPhoneRecording} className={styles.questionMicrophoneButton}/>
+                    :
+                    <img src={Microphone} className={styles.questionMicrophoneButton}/>
+                }
             </div>
             <div className={styles.questionFileUploadButtonContainer} 
                 role="button" 
