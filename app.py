@@ -38,8 +38,6 @@ DEBUG_LOGGING = DEBUG.lower() == "true"
 if DEBUG_LOGGING:
     logging.basicConfig(level=logging.DEBUG)
 
-USE_MSI = os.environ.get("USE_MSI", "false")
-
 # MSI Token
 Token = None
 Credential = ChainedTokenCredential(ManagedIdentityCredential(), AzureCliCredential())
@@ -542,35 +540,28 @@ def stream_without_data(response, history_metadata={}):
 
 
 def conversation_without_data(request_body):
-    api_key = None
+    if DEBUG_LOGGING:
+        logging.debug("Using MSI Authentication")
 
-    if USE_MSI == "true":
-        if DEBUG_LOGGING:
-            logging.debug("Using MSI Authentication")
+    # Check if Azure token is still valid
+    global Token
+    if not Token or datetime.datetime.fromtimestamp(Token.expires_on) < datetime.datetime.now():
+        Token = Credential.get_token("https://cognitiveservices.azure.com")
+    api_key = Token.token
 
-        openai.api_type = "azure_ad"
-
-        # Check if Azure token is still valid
-        global Token
-        if not Token or datetime.datetime.fromtimestamp(Token.expires_on) < datetime.datetime.now():
-            Token = Credential.get_token("https://cognitiveservices.azure.com")
-        api_key = Token.token
-
-        if DEBUG_LOGGING:
-            logging.debug(f"Token expires at: {datetime.datetime.fromtimestamp(Token.expires_on)}")
-    else:
-        openai.api_type = "azure"
-        api_key = AZURE_OPENAI_KEY
+    if DEBUG_LOGGING:
+        logging.debug(f"Token expires at: {datetime.datetime.fromtimestamp(Token.expires_on)}")
     
     openai.api_base = AZURE_OPENAI_ENDPOINT if AZURE_OPENAI_ENDPOINT else f"https://{AZURE_OPENAI_RESOURCE}.openai.azure.com/"
-    openai.api_version = "2023-12-01-preview"
+    openai.api_version = AZURE_OPENAI_PREVIEW_API_VERSION
     openai.api_key = api_key
+    openai.api_type = "azure_ad"
 
     request_messages = request_body["messages"]
     messages = [
         {
             "role": "system",
-            "content": [{"type": "text", "text": ""}]
+            "content": [{"type": "text", "text": AZURE_OPENAI_SYSTEM_MESSAGE}]
         }
     ]
 

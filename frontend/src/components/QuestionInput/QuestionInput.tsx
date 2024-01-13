@@ -9,7 +9,7 @@ import MicroPhoneRecording from "../../assets/MicrophoneRecording.svg";
 import styles from "./QuestionInput.module.css";
 
 interface Props {
-    onSend: (question: string, imageUrl: string, id?: string) => void;
+    onSend: (question: string, id?: string) => void;
     disabled: boolean;
     placeholder?: string;
     clearOnSend?: boolean;
@@ -30,9 +30,9 @@ export const QuestionInput = ({ onSend, disabled, placeholder, clearOnSend, conv
         }
 
         if(conversationId){
-            onSend(question, imageUrl, conversationId);
+            onSend(question, conversationId);
         }else{
-            onSend(question, imageUrl);
+            onSend(question);
         }
 
         if (clearOnSend) {
