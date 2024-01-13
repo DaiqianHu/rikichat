@@ -141,7 +141,7 @@ const Chat = () => {
             id: uuid(),
             role: "user",
             content: question,
-            image: imageUrl,
+            imageMode: true,
             date: new Date().toISOString(),
         };
 
@@ -222,7 +222,7 @@ const Chat = () => {
                     id: uuid(),
                     role: ERROR,
                     content: errorMessage,
-                    image: "",
+                    imageMode: false,
                     date: new Date().toISOString()
                 }
                 conversation.messages.push(errorChatMsg);
@@ -251,7 +251,7 @@ const Chat = () => {
             id: uuid(),
             role: "user",
             content: question,
-            image: imageUrl,
+            imageMode: false,
             date: new Date().toISOString(),
         };
 
@@ -286,7 +286,7 @@ const Chat = () => {
                     id: uuid(),
                     role: ERROR,
                     content: "There was an error generating a response. Chat history can't be saved at this time. If the problem persists, please contact the site administrator.",
-                    image: "",
+                    imageMode: false,
                     date: new Date().toISOString()
                 }
                 let resultConversation;
@@ -389,7 +389,7 @@ const Chat = () => {
                     id: uuid(),
                     role: ERROR,
                     content: errorMessage,
-                    image: "",
+                    imageMode: false,
                     date: new Date().toISOString()
                 }
                 let resultConversation;
@@ -504,7 +504,7 @@ const Chat = () => {
                                 id: uuid(),
                                 role: ERROR,
                                 content: errorMessage,
-                                image: "",
+                                imageMode: false,
                                 date: new Date().toISOString()
                             }
                             if(!appStateContext?.state.currentChat?.messages){
@@ -605,8 +605,7 @@ const Chat = () => {
                                     <>
                                         {answer.role === "user" ? (
                                             <div className={styles.chatMessageUser} tabIndex={0}>
-                                                <div className={styles.chatMessageUserMessage}>{answer.content}
-                                                {answer.image && <img src={answer.image} alt="description" style={{ width: '100%', height: 'auto' }} />}</div>
+                                                <div className={styles.chatMessageUserMessage}>{answer.content}</div>
                                             </div>
                                         ) : (
                                             answer.role === "assistant" ? <div className={styles.chatMessageGpt}>
