@@ -7,7 +7,6 @@ import openai
 import copy
 from azure.identity import ChainedTokenCredential, ManagedIdentityCredential, AzureCliCredential, DefaultAzureCredential
 from base64 import b64encode
-from PIL import Image
 from flask import Flask, Response, request, jsonify, send_from_directory
 from dotenv import load_dotenv
 from pydub import AudioSegment
@@ -32,10 +31,6 @@ def favicon():
 @app.route("/assets/<path:path>")
 def assets(path):
     return send_from_directory("static/assets", path)
-
-@app.route("/images/<path:path>")
-def images(path):
-    return send_from_directory("images", path)
 
 # Debug settings
 DEBUG = os.environ.get("DEBUG", "false")
@@ -543,22 +538,6 @@ def stream_without_data(response, history_metadata={}):
         }
         yield format_as_ndjson(response_obj)
 
-def generate_image(user_input):
-    logging.debug(f"GENERATE IMAGE: {user_input}")
-
-    # Get image from user input
-
-    # Read image from file and convert to image URL with base64 encoding
-    image_path = "data/sample.png"
-    with open(image_path, "rb") as image_file:
-        # compress image to 1024x1024
-        image = Image.open(image_file)
-        image.thumbnail((1024, 1024))
-
-        # save image to file
-        image.save("images/view.png", "PNG")
-
-    return "Image generated based on user input, just remind user to check the image in the chat."
 
 def conversation_without_data(request_body):
     if DEBUG_LOGGING:
@@ -571,7 +550,6 @@ def conversation_without_data(request_body):
     api_key = Token.token
 
     if DEBUG_LOGGING:
-        # logging.debug(f"Token: {api_key}")
         logging.debug(f"Token expires at: {datetime.datetime.fromtimestamp(Token.expires_on)}")
     
     openai.api_base = AZURE_OPENAI_ENDPOINT if AZURE_OPENAI_ENDPOINT else f"https://{AZURE_OPENAI_RESOURCE}.openai.azure.com/"
@@ -606,26 +584,6 @@ def conversation_without_data(request_body):
                                 {"type": "image_url", "image_url": {"url": message["image"]}}]
                 })
 
-    tools = [
-        {
-            "type": "function",
-            "function": {
-                "name": "generate_image",
-                "description": "Generate an image based on user input",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "user_input": {
-                            "type": "string",
-                            "description": "The input from the user to generate the image",
-                        }
-                    },
-                    "required": ["user_input"],
-                }
-            }
-        }
-    ]
-
     response = openai.ChatCompletion.create(
         engine=AZURE_OPENAI_MODEL,
         messages = messages,
@@ -633,53 +591,12 @@ def conversation_without_data(request_body):
         max_tokens=int(AZURE_OPENAI_MAX_TOKENS),
         top_p=float(AZURE_OPENAI_TOP_P),
         stop=AZURE_OPENAI_STOP_SEQUENCE.split("|") if AZURE_OPENAI_STOP_SEQUENCE else None,
-        stream=SHOULD_STREAM,
-        tools = tools,
-        tool_choice="auto"
+        stream=SHOULD_STREAM
     )
-
-    response_message = response.choices[0].message
-    if hasattr(response_message, 'tool_calls'):
-        tool_calls = response_message.tool_calls
-    else:
-        tool_calls = None
-
-    if tool_calls:
-        logging.debug(f"TOOL CALLS: {tool_calls}")
-
-        available_functions = {
-            "generate_image": generate_image,
-        }
-
-        messages.append(response_message)  # extend conversation with assistant's reply
-        # Step 4: send the info for each function call and function response to the model
-        for tool_call in tool_calls:
-            function_name = tool_call.function.name
-            function_to_call = available_functions[function_name]
-            function_args = json.loads(tool_call.function.arguments)
-
-            logging.debug(f"FUNCTION NAME: {function_name}, ARGS: {function_args}")
-
-            function_response = function_to_call(**function_args)
-
-            messages.append(
-                {
-                    "tool_call_id": tool_call.id,
-                    "role": "tool",
-                    "name": function_name,
-                    "content": function_response,
-                }
-            )  # extend conversation with function response
-
-            response = openai.ChatCompletion.create(
-                engine=AZURE_OPENAI_MODEL,
-                messages = messages)
 
     history_metadata = request_body.get("history_metadata", {})
 
     if not SHOULD_STREAM:
-        logging.debug(f"Content: {response.choices[0].message.content}")
-
         response_obj = {
             "id": response,
             "model": response.model,
@@ -688,8 +605,7 @@ def conversation_without_data(request_body):
             "choices": [{
                 "messages": [{
                     "role": "assistant",
-                    "content": response.choices[0].message.content,
-                    "imageMode": "true"
+                    "content": response.choices[0].message.content
                 }]
             }],
             "history_metadata": history_metadata
