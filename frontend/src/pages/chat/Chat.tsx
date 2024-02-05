@@ -115,7 +115,6 @@ const Chat = () => {
         if (resultMessage.role === ASSISTANT) {
             assistantContent += resultMessage.content
             assistantMessage = resultMessage
-            assistantMessage.imageMode = resultMessage.imageMode
             assistantMessage.content = assistantContent
         }
 
@@ -610,17 +609,13 @@ const Chat = () => {
                                             </div>
                                         ) : (
                                             answer.role === "assistant" ? <div className={styles.chatMessageGpt}>
-                                                {answer.imageMode ? (
-                                                    <img src="images\view.png" alt="User input" style={{width: "100%", height: "auto"}} />
-                                                ) : (
-                                                    <Answer
-                                                        answer={{
-                                                            answer: answer.content,
-                                                            citations: parseCitationFromMessage(messages[index - 1]),
-                                                        }}
-                                                        onCitationClicked={c => onShowCitation(c)}
-                                                    />
-                                                )}
+                                                <Answer
+                                                    answer={{
+                                                        answer: answer.content,
+                                                        citations: parseCitationFromMessage(messages[index - 1]),
+                                                    }}
+                                                    onCitationClicked={c => onShowCitation(c)}
+                                                />
                                             </div> : answer.role === ERROR ? <div className={styles.chatMessageError}>
                                                 <Stack horizontal className={styles.chatMessageErrorContent}>
                                                     <ErrorCircleRegular className={styles.errorIcon} style={{color: "rgba(182, 52, 67, 1)"}} />
