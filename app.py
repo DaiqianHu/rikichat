@@ -3,8 +3,8 @@ import json
 import os
 import logging
 import requests
-import openai
 import copy
+from openai import AzureOpenAI
 from azure.identity import ChainedTokenCredential, ManagedIdentityCredential, AzureCliCredential, DefaultAzureCredential
 from base64 import b64encode
 from flask import Flask, Response, request, jsonify, send_from_directory
@@ -515,19 +515,27 @@ def conversation_with_data(request_body):
 
 def stream_without_data(response, history_metadata={}):
     responseText = ""
+
+    # logging.debug(f"RESPONSE: {response}")
+
     for line in response:
-        if line["choices"]:
-            deltaText = line["choices"][0]["delta"].get('content')
+        # logging.debug(f"LINE: {line}")
+
+        # Check if the chunk has any choices
+        if len(line.choices) > 0:
+            delta = line.choices[0].delta
+            # logging.debug(f"{delta.role} : {delta.content}")
+            deltaText = delta.content
         else:
             deltaText = ""
         if deltaText and deltaText != "[DONE]":
             responseText = deltaText
 
         response_obj = {
-            "id": line["id"],
-            "model": line["model"],
-            "created": line["created"],
-            "object": line["object"],
+            "id": line.id,
+            "model": line.model,
+            "created": line.created,
+            "object": line.object,
             "choices": [{
                 "messages": [{
                     "role": "assistant",
@@ -547,15 +555,10 @@ def conversation_without_data(request_body):
     global Token
     if not Token or datetime.datetime.fromtimestamp(Token.expires_on) < datetime.datetime.now():
         Token = Credential.get_token("https://cognitiveservices.azure.com")
-    api_key = Token.token
+        if DEBUG_LOGGING:
+            logging.debug(f"Token expires at: {datetime.datetime.fromtimestamp(Token.expires_on)}")
 
-    if DEBUG_LOGGING:
-        logging.debug(f"Token expires at: {datetime.datetime.fromtimestamp(Token.expires_on)}")
-    
-    openai.api_base = AZURE_OPENAI_ENDPOINT if AZURE_OPENAI_ENDPOINT else f"https://{AZURE_OPENAI_RESOURCE}.openai.azure.com/"
-    openai.api_version = AZURE_OPENAI_PREVIEW_API_VERSION
-    openai.api_key = api_key
-    openai.api_type = "azure_ad"
+    client = AzureOpenAI(api_key = Token.token, azure_endpoint = AZURE_OPENAI_ENDPOINT, api_version = AZURE_OPENAI_PREVIEW_API_VERSION)
 
     request_messages = request_body["messages"]
     messages = [
@@ -584,8 +587,8 @@ def conversation_without_data(request_body):
                                 {"type": "image_url", "image_url": {"url": message["image"]}}]
                 })
 
-    response = openai.ChatCompletion.create(
-        engine=AZURE_OPENAI_MODEL,
+    response = client.chat.completions.create(
+        model=AZURE_OPENAI_MODEL,
         messages = messages,
         temperature=float(AZURE_OPENAI_TEMPERATURE),
         max_tokens=int(AZURE_OPENAI_MAX_TOKENS),
@@ -614,7 +617,6 @@ def conversation_without_data(request_body):
         return jsonify(response_obj), 200
     else:
         return Response(stream_without_data(response, history_metadata), mimetype='text/event-stream')
-
 
 @app.route("/conversation", methods=["GET", "POST"])
 def conversation():
