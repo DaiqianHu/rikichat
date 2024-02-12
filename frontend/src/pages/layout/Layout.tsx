@@ -38,6 +38,7 @@ const Layout = () => {
     const [copyClicked, setCopyClicked] = useState<boolean>(false);
     const [copyText, setCopyText] = useState<string>("Copy URL");
     const appStateContext = useContext(AppStateContext)
+    const [appVersion, setAppVersion] = useState('');
 
     const handleShareClick = () => {
         setIsSharePanelOpen(true);
@@ -64,6 +65,14 @@ const Layout = () => {
         }
     }, [copyClicked]);
 
+    useEffect(() => {
+        fetch('/version')
+            .then(response => response.text())
+            .then(data => {
+                setAppVersion(data);
+            });
+    }, []);
+
     useEffect(() => {}, [appStateContext?.state.isCosmosDBAvailable.status]);
 
     return (
@@ -79,7 +88,7 @@ const Layout = () => {
                             aria-hidden="true"
                         />
                         <Link to="/" className={styles.headerTitleContainer}>
-                            <h1 className={styles.headerTitle}>Azure AI ChatBot</h1>
+                            <h1 className={styles.headerTitle}>Cayla ChatBot <span className={styles.versionText}>{appVersion}</span></h1>
                         </Link>
                     </Stack>
                     <Stack horizontal tokens={{ childrenGap: 4 }}>

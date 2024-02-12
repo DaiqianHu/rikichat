@@ -31,6 +31,10 @@
     color: #242424;
 }
 
+.versionText {
+    font-size: 0.8em;
+}
+
 .headerIcon {
     height: 32px;
     width: 32px;
