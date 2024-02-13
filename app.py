@@ -102,6 +102,10 @@ AZURE_COSMOSDB_MONGO_VCORE_TITLE_COLUMN = os.environ.get("AZURE_COSMOSDB_MONGO_V
 AZURE_COSMOSDB_MONGO_VCORE_URL_COLUMN = os.environ.get("AZURE_COSMOSDB_MONGO_VCORE_URL_COLUMN")
 AZURE_COSMOSDB_MONGO_VCORE_VECTOR_COLUMNS = os.environ.get("AZURE_COSMOSDB_MONGO_VCORE_VECTOR_COLUMNS")
 
+# Azure Bing Search Settings
+AZURE_BING_SEARCH_KEY = os.environ.get("AZURE_BING_SEARCH_KEY")
+AZURE_BING_SEARCH_URL = os.environ.get("AZURE_BING_SEARCH_URL")
+
 # Azure Speech Service Settings
 AZURE_SPEECH_SERVICE_REGION = os.environ.get("AZURE_SPEECH_SERVICE_REGION")
 AZURE_SPEECH_SERVICE_KEY = os.environ.get("AZURE_SPEECH_SERVICE_KEY")
@@ -519,6 +523,28 @@ def conversation_with_data(request_body):
     else:
         return Response(stream_with_data(body, headers, endpoint, history_metadata), mimetype='text/event-stream')
 
+def search(query: str) -> list:
+    """
+    Perform a bing search against the given query
+
+    @param query: Search query
+    @return: List of search results
+
+    """
+
+    headers = {"Ocp-Apim-Subscription-Key": AZURE_BING_SEARCH_KEY}
+    params = {"q": query, "textDecorations": False}
+    response = requests.get(AZURE_BING_SEARCH_URL, headers=headers, params=params)
+    response.raise_for_status()
+    search_results = response.json()
+
+    output = []
+
+    for result in search_results["webPages"]["value"]:
+        output.append({"title": result["name"], "link": result["url"], "snippet": result["snippet"]})
+
+    return json.dumps(output)
+
 def stream_without_data(response, history_metadata={}):
     responseText = ""
 
@@ -535,6 +561,8 @@ def stream_without_data(response, history_metadata={}):
         else:
             deltaText = ""
         if deltaText and deltaText != "[DONE]":
+            # logging.debug(f"DELTA TEXT: {deltaText}")
+
             responseText = deltaText
 
         response_obj = {
@@ -552,7 +580,6 @@ def stream_without_data(response, history_metadata={}):
         }
         yield format_as_ndjson(response_obj)
 
-
 def conversation_without_data(request_body):
     if DEBUG_LOGGING:
         logging.debug("Using MSI Authentication")
@@ -563,6 +590,28 @@ def conversation_without_data(request_body):
         Token = Credential.get_token("https://cognitiveservices.azure.com")
         if DEBUG_LOGGING:
             logging.debug(f"Token expires at: {datetime.datetime.fromtimestamp(Token.expires_on)}")
+
+    tools = [
+        {
+            "type": "function",
+            "function": {
+                "name": "search_bing",
+                "description": "Searches bing to get up-to-date information from the web.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "The search query",
+                        }
+                    },
+                    "required": ["query"],
+                },
+            },
+        }
+    ]
+
+    available_functions = {"search_bing": search}
 
     client = AzureOpenAI(api_key = Token.token, azure_endpoint = AZURE_OPENAI_ENDPOINT, api_version = AZURE_OPENAI_PREVIEW_API_VERSION)
 
@@ -593,15 +642,65 @@ def conversation_without_data(request_body):
                                 {"type": "image_url", "image_url": {"url": message["image"]}}]
                 })
 
-    response = client.chat.completions.create(
-        model=AZURE_OPENAI_MODEL,
-        messages = messages,
-        temperature=float(AZURE_OPENAI_TEMPERATURE),
-        max_tokens=int(AZURE_OPENAI_MAX_TOKENS),
-        top_p=float(AZURE_OPENAI_TOP_P),
-        stop=AZURE_OPENAI_STOP_SEQUENCE.split("|") if AZURE_OPENAI_STOP_SEQUENCE else None,
-        stream=SHOULD_STREAM
-    )
+    for _ in range(2):
+        response = client.chat.completions.create(
+            model=AZURE_OPENAI_MODEL,
+            messages = messages,
+            temperature=float(AZURE_OPENAI_TEMPERATURE),
+            max_tokens=int(AZURE_OPENAI_MAX_TOKENS),
+            top_p=float(AZURE_OPENAI_TOP_P),
+            stop=AZURE_OPENAI_STOP_SEQUENCE.split("|") if AZURE_OPENAI_STOP_SEQUENCE else None,
+            stream=SHOULD_STREAM,
+            tools=tools
+        )
+
+        tool_calls = []
+
+        if SHOULD_STREAM:
+            for chunk in response:
+                if len(chunk.choices) == 0:
+                    continue
+
+                delta = chunk.choices[0].delta
+                if delta and delta.tool_calls:
+                    tcchunklist = delta.tool_calls
+                    for tcchunk in tcchunklist:
+                        if len(tool_calls) <= tcchunk.index:
+                            tool_calls.append({"id": "", "type": "function", "function": { "name": "", "arguments": "" } })
+                        tc = tool_calls[tcchunk.index]
+
+                        if tcchunk.id:
+                            tc["id"] += tcchunk.id
+                        if tcchunk.function.name:
+                            tc["function"]["name"] += tcchunk.function.name
+                        if tcchunk.function.arguments:
+                            tc["function"]["arguments"] += tcchunk.function.arguments 
+                    continue
+                else:
+                    break # end of conversation
+
+            if tool_calls and tool_calls != []:
+                logging.debug(f"TOOL CALLS: {tool_calls}")
+
+                messages.append(
+                {
+                    "tool_calls": tool_calls,
+                    "role": 'assistant',
+                })
+
+                for tool_call in tool_calls:
+                    function_name = tool_call['function']['name']
+                    function_to_call = available_functions[function_name]
+                    function_args = json.loads(tool_call['function']['arguments'])
+                    function_response = function_to_call(**function_args)
+                    messages.append(
+                        {
+                            "tool_call_id": tool_call['id'],
+                            "role": "tool",
+                            "name": function_name,
+                            "content": function_response,
+                        }
+                    )  # extend conversation with function response 
 
     history_metadata = request_body.get("history_metadata", {})
 
