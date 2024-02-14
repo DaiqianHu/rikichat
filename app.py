@@ -677,6 +677,7 @@ def conversation_without_data(request_body):
                             tc["function"]["arguments"] += tcchunk.function.arguments 
                     continue
                 else:
+                    logging.debug("no tool calls in chunk, exiting loop")
                     break # end of conversation
 
             if tool_calls and tool_calls != []:
@@ -725,8 +726,14 @@ def conversation_without_data(request_body):
 
 @app.route("/conversation", methods=["GET", "POST"])
 def conversation():
-    request_body = request.json
-    return conversation_internal(request_body)
+    assistantType = request.args.get('assistants')
+
+    if (assistantType is None):
+        request_body = request.json
+        return conversation_internal(request_body)
+    elif assistantType == "math":
+        logging.debug("Using math assistant")
+        return jsonify({"error": "Math assistant not implemented yet"}), 501
 
 def conversation_internal(request_body):
     try:

@@ -2,7 +2,11 @@ import { UserInfo, ConversationRequest, Conversation, ChatMessage, CosmosDBHealt
 import { chatHistorySampleData } from "../constants/chatHistory";
 
 export async function conversationApi(options: ConversationRequest, abortSignal: AbortSignal): Promise<Response> {
-    const response = await fetch("/conversation", {
+    const queryParameters = new URLSearchParams(window.location.search);
+    const assistantParameter = queryParameters.get('assistants'); 
+
+    const apiEndpoint = assistantParameter ? `/conversation?assistants=${assistantParameter}` : '/conversation';
+    const response = await fetch(apiEndpoint, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
