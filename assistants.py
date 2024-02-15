@@ -113,23 +113,26 @@ def format_messages(client, messages: Iterable[MessageFile]) -> None:
 
 def conversation_internal_with_math_assistant(client : AzureOpenAI, request_body : any, deploymentModel : str) :
     request_messages = request_body["messages"]
+    history_metadata = request_body.get("history_metadata", {})
 
     # get the latest message
     latest_message = request_messages[-1]
     content = latest_message["content"]
 
+    newThread = True
+    if len(request_messages) > 1: newThread = False
+
     global MathAssistant
     global MathAssistantThread
 
+    if DEBUG_LOGGING: logging.debug(f"request_body: {request_body}")    
     if DEBUG_LOGGING: logging.debug(f"content: {content}")
+    if DEBUG_LOGGING: logging.debug(f"history_metadata: {history_metadata}")
 
     # Constants
     MATH_TUTOR_NAME = "Math Tutor"
     MATH_TUTOR_INSTRUCTIONS = "You are a personal math tutor. Write and run code to answer math questions."
     CODE_INTERPRETER_TYPE = "code_interpreter"
-
-    # Configure logging
-    logging.basicConfig(level=logging.DEBUG if DEBUG_LOGGING else logging.INFO)
 
     try:
         if MathAssistant is None:
@@ -149,7 +152,13 @@ def conversation_internal_with_math_assistant(client : AzureOpenAI, request_body
         else:
             logging.debug(f"MathAssistantThread already exists: {MathAssistantThread}")
 
-        history_metadata = request_body.get("history_metadata", {})
+            if newThread:
+                # Delete the old thread
+                client.beta.threads.delete(MathAssistantThread.id)
+                # Create a new thread
+                MathAssistantThread = client.beta.threads.create()
+                logging.debug(f"New MathAssistantThread: {MathAssistantThread}")
+
 
         return process_message(client, content, history_metadata)
     except Exception as e:
