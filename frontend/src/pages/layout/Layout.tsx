@@ -39,6 +39,7 @@ const Layout = () => {
     const [copyText, setCopyText] = useState<string>("Copy URL");
     const appStateContext = useContext(AppStateContext)
     const [appVersion, setAppVersion] = useState('');
+    const [headerTitle, setHeaderTitle] = useState<string>("Cayla ChatBot");
 
     const handleShareClick = () => {
         setIsSharePanelOpen(true);
@@ -73,6 +74,15 @@ const Layout = () => {
             });
     }, []);
 
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const assistants = urlParams.get('assistants');
+
+        if (assistants) {
+            setHeaderTitle('assistants - ' + assistants);
+        }
+    }, []);
+
     useEffect(() => {}, [appStateContext?.state.isCosmosDBAvailable.status]);
 
     return (
@@ -88,7 +98,7 @@ const Layout = () => {
                             aria-hidden="true"
                         />
                         <Link to="/" className={styles.headerTitleContainer}>
-                            <h1 className={styles.headerTitle}>Cayla ChatBot <span className={styles.versionText}>{appVersion}</span></h1>
+                            <h1 className={styles.headerTitle}>{headerTitle} <span className={styles.versionText}>{appVersion}</span></h1>
                         </Link>
                     </Stack>
                     <Stack horizontal tokens={{ childrenGap: 4 }}>
