@@ -548,8 +548,6 @@ def search(query: str) -> list:
 def stream_without_data(response, history_metadata={}):
     responseText = ""
 
-    # logging.debug(f"RESPONSE: {response}")
-
     for line in response:
         # logging.debug(f"LINE: {line}")
 
@@ -581,37 +579,13 @@ def stream_without_data(response, history_metadata={}):
         yield format_as_ndjson(response_obj)
 
 def conversation_without_data(request_body):
-    if DEBUG_LOGGING:
-        logging.debug("Using MSI Authentication")
+    if DEBUG_LOGGING: logging.debug("Using MSI Authentication")
 
     # Check if Azure token is still valid
     global Token
     if not Token or datetime.datetime.fromtimestamp(Token.expires_on) < datetime.datetime.now():
         Token = Credential.get_token("https://cognitiveservices.azure.com")
-        if DEBUG_LOGGING:
-            logging.debug(f"Token expires at: {datetime.datetime.fromtimestamp(Token.expires_on)}")
-
-    tools = [
-        {
-            "type": "function",
-            "function": {
-                "name": "search_bing",
-                "description": "Searches bing to get up-to-date information from the web.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "query": {
-                            "type": "string",
-                            "description": "The search query",
-                        }
-                    },
-                    "required": ["query"],
-                },
-            },
-        }
-    ]
-
-    available_functions = {"search_bing": search}
+        if DEBUG_LOGGING: logging.debug(f"Token expires at: {datetime.datetime.fromtimestamp(Token.expires_on)}")
 
     client = AzureOpenAI(api_key = Token.token, azure_endpoint = AZURE_OPENAI_ENDPOINT, api_version = AZURE_OPENAI_PREVIEW_API_VERSION)
 
@@ -642,66 +616,15 @@ def conversation_without_data(request_body):
                                 {"type": "image_url", "image_url": {"url": message["image"]}}]
                 })
 
-    for _ in range(2):
-        response = client.chat.completions.create(
-            model=AZURE_OPENAI_MODEL,
-            messages = messages,
-            temperature=float(AZURE_OPENAI_TEMPERATURE),
-            max_tokens=int(AZURE_OPENAI_MAX_TOKENS),
-            top_p=float(AZURE_OPENAI_TOP_P),
-            stop=AZURE_OPENAI_STOP_SEQUENCE.split("|") if AZURE_OPENAI_STOP_SEQUENCE else None,
-            stream=SHOULD_STREAM,
-            tools=tools
-        )
-
-        tool_calls = []
-
-        if SHOULD_STREAM:
-            for chunk in response:
-                if len(chunk.choices) == 0:
-                    continue
-
-                delta = chunk.choices[0].delta
-                if delta and delta.tool_calls:
-                    tcchunklist = delta.tool_calls
-                    for tcchunk in tcchunklist:
-                        if len(tool_calls) <= tcchunk.index:
-                            tool_calls.append({"id": "", "type": "function", "function": { "name": "", "arguments": "" } })
-                        tc = tool_calls[tcchunk.index]
-
-                        if tcchunk.id:
-                            tc["id"] += tcchunk.id
-                        if tcchunk.function.name:
-                            tc["function"]["name"] += tcchunk.function.name
-                        if tcchunk.function.arguments:
-                            tc["function"]["arguments"] += tcchunk.function.arguments 
-                    continue
-                else:
-                    logging.debug("no tool calls in chunk, exiting loop")
-                    break # end of conversation
-
-            if tool_calls and tool_calls != []:
-                logging.debug(f"TOOL CALLS: {tool_calls}")
-
-                messages.append(
-                {
-                    "tool_calls": tool_calls,
-                    "role": 'assistant',
-                })
-
-                for tool_call in tool_calls:
-                    function_name = tool_call['function']['name']
-                    function_to_call = available_functions[function_name]
-                    function_args = json.loads(tool_call['function']['arguments'])
-                    function_response = function_to_call(**function_args)
-                    messages.append(
-                        {
-                            "tool_call_id": tool_call['id'],
-                            "role": "tool",
-                            "name": function_name,
-                            "content": function_response,
-                        }
-                    )  # extend conversation with function response 
+    response = client.chat.completions.create(
+        model=AZURE_OPENAI_MODEL,
+        messages = messages,
+        temperature=float(AZURE_OPENAI_TEMPERATURE),
+        max_tokens=int(AZURE_OPENAI_MAX_TOKENS),
+        top_p=float(AZURE_OPENAI_TOP_P),
+        stop=AZURE_OPENAI_STOP_SEQUENCE.split("|") if AZURE_OPENAI_STOP_SEQUENCE else None,
+        stream=SHOULD_STREAM
+    )
 
     history_metadata = request_body.get("history_metadata", {})
 
