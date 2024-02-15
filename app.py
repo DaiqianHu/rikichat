@@ -15,6 +15,8 @@ from pydub.utils import mediainfo
 from backend.auth.auth_utils import get_authenticated_user_details
 from backend.history.cosmosdbservice import CosmosConversationClient
 
+import assistants
+
 load_dotenv()
 
 app = Flask(__name__, static_folder="static")
@@ -45,7 +47,7 @@ if DEBUG_LOGGING:
     logging.basicConfig(level=logging.DEBUG)
 
 # MSI Token
-Token = None
+AzureOpenAIAccessToken = None
 Credential = ChainedTokenCredential(ManagedIdentityCredential(), AzureCliCredential())
 
 # On Your Data Settings
@@ -582,12 +584,12 @@ def conversation_without_data(request_body):
     if DEBUG_LOGGING: logging.debug("Using MSI Authentication")
 
     # Check if Azure token is still valid
-    global Token
-    if not Token or datetime.datetime.fromtimestamp(Token.expires_on) < datetime.datetime.now():
-        Token = Credential.get_token("https://cognitiveservices.azure.com")
-        if DEBUG_LOGGING: logging.debug(f"Token expires at: {datetime.datetime.fromtimestamp(Token.expires_on)}")
+    global AzureOpenAIAccessToken
+    if not AzureOpenAIAccessToken or datetime.datetime.fromtimestamp(AzureOpenAIAccessToken.expires_on) < datetime.datetime.now():
+        AzureOpenAIAccessToken = Credential.get_token("https://cognitiveservices.azure.com")
+        if DEBUG_LOGGING: logging.debug(f"Token expires at: {datetime.datetime.fromtimestamp(AzureOpenAIAccessToken.expires_on)}")
 
-    client = AzureOpenAI(api_key = Token.token, azure_endpoint = AZURE_OPENAI_ENDPOINT, api_version = AZURE_OPENAI_PREVIEW_API_VERSION)
+    client = AzureOpenAI(api_key = AzureOpenAIAccessToken.token, azure_endpoint = AZURE_OPENAI_ENDPOINT, api_version = AZURE_OPENAI_PREVIEW_API_VERSION)
 
     request_messages = request_body["messages"]
     messages = [
@@ -650,13 +652,15 @@ def conversation_without_data(request_body):
 @app.route("/conversation", methods=["GET", "POST"])
 def conversation():
     assistantType = request.args.get('assistants')
+    request_body = request.json
 
     if (assistantType is None):
-        request_body = request.json
         return conversation_internal(request_body)
     elif assistantType == "math":
         logging.debug("Using math assistant")
-        return jsonify({"error": "Math assistant not implemented yet"}), 501
+        return conversation_with_math_assistant(request_body)
+    else:
+        return jsonify({"error": f"assistant {assistantType} not implemented yet"}), 501
 
 def conversation_internal(request_body):
     try:
@@ -669,6 +673,20 @@ def conversation_internal(request_body):
         logging.exception("Exception in /conversation")
         return jsonify({"error": str(e)}), 500
 
+def conversation_with_math_assistant(request_body):
+    try:
+        # Check if Azure token is still valid
+        global AzureOpenAIAccessToken
+        if not AzureOpenAIAccessToken or datetime.datetime.fromtimestamp(AzureOpenAIAccessToken.expires_on) < datetime.datetime.now():
+            AzureOpenAIAccessToken = Credential.get_token("https://cognitiveservices.azure.com")
+            if DEBUG_LOGGING: logging.debug(f"Token expires at: {datetime.datetime.fromtimestamp(AzureOpenAIAccessToken.expires_on)}")
+
+        client = AzureOpenAI(api_key = AzureOpenAIAccessToken.token, azure_endpoint = AZURE_OPENAI_ENDPOINT, api_version = AZURE_OPENAI_PREVIEW_API_VERSION)
+        return assistants.conversation_internal_with_math_assistant(client, request_body, AZURE_OPENAI_MODEL)
+    except Exception as e:
+        logging.exception("Exception in /conversation_with_math_assistant")
+        return jsonify({"error": str(e)}), 500
+    
 ## Conversation History API ## 
 @app.route("/history/generate", methods=["POST"])
 def add_conversation():
