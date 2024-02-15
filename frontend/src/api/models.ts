@@ -24,7 +24,6 @@ export type ChatMessage = {
     id: string;
     role: string;
     content: string;
-    imageMode: boolean;
     end_turn?: boolean;
     date: string;
 };

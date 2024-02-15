@@ -141,7 +141,6 @@ const Chat = () => {
             id: uuid(),
             role: "user",
             content: question,
-            imageMode: true,
             date: new Date().toISOString(),
         };
 
@@ -222,7 +221,6 @@ const Chat = () => {
                     id: uuid(),
                     role: ERROR,
                     content: errorMessage,
-                    imageMode: false,
                     date: new Date().toISOString()
                 }
                 conversation.messages.push(errorChatMsg);
@@ -251,7 +249,6 @@ const Chat = () => {
             id: uuid(),
             role: "user",
             content: question,
-            imageMode: false,
             date: new Date().toISOString(),
         };
 
@@ -286,7 +283,6 @@ const Chat = () => {
                     id: uuid(),
                     role: ERROR,
                     content: "There was an error generating a response. Chat history can't be saved at this time. If the problem persists, please contact the site administrator.",
-                    imageMode: false,
                     date: new Date().toISOString()
                 }
                 let resultConversation;
@@ -389,7 +385,6 @@ const Chat = () => {
                     id: uuid(),
                     role: ERROR,
                     content: errorMessage,
-                    imageMode: false,
                     date: new Date().toISOString()
                 }
                 let resultConversation;
@@ -504,7 +499,6 @@ const Chat = () => {
                                 id: uuid(),
                                 role: ERROR,
                                 content: errorMessage,
-                                imageMode: false,
                                 date: new Date().toISOString()
                             }
                             if(!appStateContext?.state.currentChat?.messages){
