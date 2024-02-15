@@ -7,6 +7,7 @@ import { useContext, useEffect, useState } from "react";
 import { HistoryButton, ShareButton } from "../../components/common/Button";
 import { AppStateContext } from "../../state/AppProvider";
 import { CosmosDBStatus } from "../../api";
+import { VERSION_TIMESTAMP } from '../../../version';
 
 const shareButtonStyles: ICommandBarStyles & IButtonStyles = {
     root: {
@@ -98,7 +99,7 @@ const Layout = () => {
                             aria-hidden="true"
                         />
                         <Link to="/" className={styles.headerTitleContainer}>
-                            <h1 className={styles.headerTitle}>{headerTitle} <span className={styles.versionText}>{appVersion}</span></h1>
+                            <h1 className={styles.headerTitle}>{headerTitle} <span className={styles.versionText}>{VERSION_TIMESTAMP}</span></h1>
                         </Link>
                     </Stack>
                     <Stack horizontal tokens={{ childrenGap: 4 }}>
