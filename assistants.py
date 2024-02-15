@@ -123,23 +123,36 @@ def conversation_internal_with_math_assistant(client : AzureOpenAI, request_body
 
     if DEBUG_LOGGING: logging.debug(f"content: {content}")
 
-    if MathAssistant is None:
-        MathAssistant = client.beta.assistants.create(
-            name="Math Tutor",
-            instructions="You are a personal math tutor. Write and run code to answer math questions.",
-            tools=[{"type": "code_interpreter"}],
-            model=deploymentModel,
-        )
-        if DEBUG_LOGGING: logging.debug(f"MathAssistant: {MathAssistant}")
-    else:
-        if DEBUG_LOGGING: logging.debug(f"MathAssistant already exists: {MathAssistant}")
+    # Constants
+    MATH_TUTOR_NAME = "Math Tutor"
+    MATH_TUTOR_INSTRUCTIONS = "You are a personal math tutor. Write and run code to answer math questions."
+    CODE_INTERPRETER_TYPE = "code_interpreter"
 
-    if MathAssistantThread is None:
-        MathAssistantThread = client.beta.threads.create()
-        if DEBUG_LOGGING: logging.debug(f"MathAssistantThread: {MathAssistantThread}")
-    else:
-        if DEBUG_LOGGING: logging.debug(f"MathAssistantThread already exists: {MathAssistantThread}")
+    # Configure logging
+    logging.basicConfig(level=logging.DEBUG if DEBUG_LOGGING else logging.INFO)
 
-    history_metadata = request_body.get("history_metadata", {})
+    try:
+        if MathAssistant is None:
+            MathAssistant = client.beta.assistants.create(
+                name=MATH_TUTOR_NAME,
+                instructions=MATH_TUTOR_INSTRUCTIONS,
+                tools=[{"type": CODE_INTERPRETER_TYPE}],
+                model=deploymentModel,
+            )
+            logging.debug(f"MathAssistant: {MathAssistant}")
+        else:
+            logging.debug(f"MathAssistant already exists: {MathAssistant}")
 
-    return process_message(client, content, history_metadata)
+        if MathAssistantThread is None:
+            MathAssistantThread = client.beta.threads.create()
+            logging.debug(f"MathAssistantThread: {MathAssistantThread}")
+        else:
+            logging.debug(f"MathAssistantThread already exists: {MathAssistantThread}")
+
+        history_metadata = request_body.get("history_metadata", {})
+
+        return process_message(client, content, history_metadata)
+    except Exception as e:
+        logging.error(f"An error occurred: {e}")
+        # Handle error appropriately
+        return jsonify({"error": str(e)}), 500
