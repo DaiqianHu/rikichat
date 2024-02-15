@@ -34,12 +34,6 @@ def favicon():
 def assets(path):
     return send_from_directory("static/assets", path)
 
-@app.route("/version")
-def version():
-    timestamp = os.path.getmtime(__file__)
-    build_time = datetime.datetime.fromtimestamp(timestamp)
-    return build_time.strftime("-v%Y.%m.%d")
-
 # Debug settings
 DEBUG = os.environ.get("DEBUG", "false")
 DEBUG_LOGGING = DEBUG.lower() == "true"

@@ -39,7 +39,6 @@ const Layout = () => {
     const [copyClicked, setCopyClicked] = useState<boolean>(false);
     const [copyText, setCopyText] = useState<string>("Copy URL");
     const appStateContext = useContext(AppStateContext)
-    const [appVersion, setAppVersion] = useState('');
     const [headerTitle, setHeaderTitle] = useState<string>("Cayla ChatBot");
 
     const handleShareClick = () => {
@@ -66,14 +65,6 @@ const Layout = () => {
             setCopyText("Copied URL");
         }
     }, [copyClicked]);
-
-    useEffect(() => {
-        fetch('/version')
-            .then(response => response.text())
-            .then(data => {
-                setAppVersion(data);
-            });
-    }, []);
 
     useEffect(() => {
         const urlParams = new URLSearchParams(window.location.search);
