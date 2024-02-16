@@ -34,6 +34,10 @@ def favicon():
 def assets(path):
     return send_from_directory("static/assets", path)
 
+@app.route("/images/<path:path>")
+def image(path):
+    return send_from_directory("images", path)
+
 # Debug settings
 DEBUG = os.environ.get("DEBUG", "false")
 DEBUG_LOGGING = DEBUG.lower() == "true"

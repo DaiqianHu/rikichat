@@ -44,6 +44,27 @@ def process_message(client, content: str, history_metadata) -> None:
                 if message.role == "assistant":
                     break
 
+            assistantContent = ""
+            for item in message.content:
+                # Determine the content type
+                if isinstance(item, MessageContentText):
+                    if DEBUG_LOGGING: logging.debug(f"{message.role}:\n{item.text.value}\n")
+                    assistantContent += item.text.value
+                elif isinstance(item, MessageContentImageFile):
+                    # Retrieve image from file id
+                    response_content = client.files.content(item.image_file.file_id)
+                    data_in_bytes = response_content.read()
+
+                    # save image to file
+                    with open(f"./images/{MathAssistantThread.id}.jpg", "wb") as img_file:
+                        img_file.write(data_in_bytes)
+
+                    if DEBUG_LOGGING: logging.debug(f"Image saved to file: ./images/{MathAssistantThread.id}.jpg")
+                    
+                    assistantContent += f"![Img](./images/{MathAssistantThread.id}.jpg)"
+            
+            if DEBUG_LOGGING: logging.debug(f"Assistant:\n{assistantContent}\n")
+
             response_obj = {
                 "id": message.id,
                 "model": "gpt-3.5-turbo",
@@ -52,7 +73,7 @@ def process_message(client, content: str, history_metadata) -> None:
                 "choices": [{
                     "messages": [{
                         "role": message.role,
-                        "content": message.content[0].text.value
+                        "content": assistantContent
                     }]
                 }],
                 "history_metadata": history_metadata
