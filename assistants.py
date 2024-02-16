@@ -61,7 +61,7 @@ def process_message(client, content: str, history_metadata) -> None:
 
                     if DEBUG_LOGGING: logging.debug(f"Image saved to file: ./images/{MathAssistantThread.id}.jpg")
                     
-                    assistantContent += f"![Img](./images/{MathAssistantThread.id}.jpg)"
+                    assistantContent += f"<img src=\"./images/{MathAssistantThread.id}.jpg\" alt=\"Example image\" width=\"100%\" height=\"auto\" display=\"block\" />"
             
             if DEBUG_LOGGING: logging.debug(f"Assistant:\n{assistantContent}\n")
 

@@ -8,6 +8,7 @@ import { AskResponse, Citation } from "../../api";
 import { parseAnswer } from "./AnswerParser";
 
 import ReactMarkdown from "react-markdown";
+import rehypeRaw from 'rehype-raw'
 import remarkGfm from "remark-gfm";
 import supersub from 'remark-supersub'
 
@@ -63,6 +64,7 @@ export const Answer = ({
                     <ReactMarkdown
                         linkTarget="_blank"
                         remarkPlugins={[remarkGfm, supersub]}
+                        rehypePlugins={[rehypeRaw]}
                         children={parsedAnswer.markdownFormatText}
                         className={styles.answerText}
                     />
