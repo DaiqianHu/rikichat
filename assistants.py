@@ -49,7 +49,7 @@ def conversation_internal_with_assistant(client : AzureOpenAI, request_body : an
     content = latest_message["content"]
 
     if DEBUG_LOGGING: logging.debug(f"user_id: {user_id}")
-    if DEBUG_LOGGING: logging.debug(f"request_body: {request_body}")    
+    # if DEBUG_LOGGING: logging.debug(f"request_body: {request_body}")    
     if DEBUG_LOGGING: logging.debug(f"content: {content}")
     if DEBUG_LOGGING: logging.debug(f"history_metadata: {history_metadata}")
 
@@ -58,15 +58,15 @@ def conversation_internal_with_assistant(client : AzureOpenAI, request_body : an
 
     try:
         # get thread_id from assistant_type and user_id
-        newThread = False
+        newThread = True
         if user_id in personal_assistant_threads and assistant_type in personal_assistant_threads[user_id]:
             thread_id = personal_assistant_threads[user_id][assistant_type]
+            newThread = False
         else:
             thread_id = None
-        if thread_id is None:
             if DEBUG_LOGGING: logging.debug(f"No existing thread found by {user_id} for {assistant_type}")
-            newThread = True
-        elif len(request_messages) > 1:
+
+        if thread_id is not None and len(request_messages) == 1:
             # delete the old thread
             client.beta.threads.delete(thread_id)
             newThread = True
@@ -76,27 +76,31 @@ def conversation_internal_with_assistant(client : AzureOpenAI, request_body : an
             thread = client.beta.threads.create()
             thread_id = thread.id
             personal_assistant_threads[user_id] = { assistant_type: thread_id }
+
+            if DEBUG_LOGGING: logging.debug(f"Created a new thread: {thread_id}")
+
+        if DEBUG_LOGGING: logging.debug(f"thread_id: {thread_id}")
     except Exception as e:
         logging.error(f"An error occurred: {e}")
         # Handle error appropriately
         return jsonify({"error": str(e)}), 500
 
-    # create a new message in the assistant thread
-    client.beta.threads.messages.create(thread_id=thread_id, role="user", content=content)
-
-    # create a new run in the assistant thread
-    run = client.beta.threads.runs.create(
-        assistant_id=assistant.id,
-        thread_id=thread_id,
-        instructions="Please address the user as Jane Doe. The user has a premium account. Be assertive, accurate, and polite. Ask if the user has further questions. "
-        + "The current date and time is: "
-        + datetime.now().strftime("%x %X")
-        + ".",
-    )
-
-    if DEBUG_LOGGING: logging.debug(f"processing ...")
-
     try:
+        # create a new message in the assistant thread
+        client.beta.threads.messages.create(thread_id=thread_id, role="user", content=content)
+
+        # create a new run in the assistant thread
+        run = client.beta.threads.runs.create(
+            assistant_id=assistant.id,
+            thread_id=thread_id,
+            instructions="Please address the user as Jane Doe. The user has a premium account. Be assertive, accurate, and polite. Ask if the user has further questions. "
+            + "The current date and time is: "
+            + datetime.now().strftime("%x %X")
+            + ".",
+        )
+
+        if DEBUG_LOGGING: logging.debug(f"processing ...")
+
         # poll the run till completion
         poll_run_till_completion(client, thread_id, run.id, {}, 10, 3)
 
