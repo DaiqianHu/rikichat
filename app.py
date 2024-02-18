@@ -649,16 +649,17 @@ def conversation_without_data(request_body):
 
 @app.route("/conversation", methods=["GET", "POST"])
 def conversation():
-    assistantType = request.args.get('assistants')
+    authenticated_user = get_authenticated_user_details(request_headers=request.headers)
+    user_id = authenticated_user['user_principal_id']
+    assistant_type = request.args.get('assistants')
     request_body = request.json
 
-    if (assistantType is None):
+    if (assistant_type is None):
         return conversation_internal(request_body)
-    elif assistantType == "math":
-        logging.debug("Using math assistant")
-        return conversation_with_math_assistant(request_body)
-    else:
-        return jsonify({"error": f"assistant {assistantType} not implemented yet"}), 501
+    elif assistant_type not in assistants.assistant_types:
+        return jsonify({"error": "Invalid assistant type"}), 400
+    
+    return conversation_with_assistant(request_body, assistant_type, user_id)
 
 def conversation_internal(request_body):
     try:
@@ -671,7 +672,7 @@ def conversation_internal(request_body):
         logging.exception("Exception in /conversation")
         return jsonify({"error": str(e)}), 500
 
-def conversation_with_math_assistant(request_body):
+def conversation_with_assistant(request_body, assistant_type, user_id):
     try:
         # Check if Azure token is still valid
         global AzureOpenAIAccessToken
@@ -680,9 +681,10 @@ def conversation_with_math_assistant(request_body):
             if DEBUG_LOGGING: logging.debug(f"Token expires at: {datetime.datetime.fromtimestamp(AzureOpenAIAccessToken.expires_on)}")
 
         client = AzureOpenAI(api_key = AzureOpenAIAccessToken.token, azure_endpoint = AZURE_OPENAI_ENDPOINT, api_version = AZURE_OPENAI_PREVIEW_API_VERSION)
-        return assistants.conversation_internal_with_math_assistant(client, request_body, AZURE_OPENAI_MODEL)
+        
+        return assistants.conversation_internal_with_assistant(client, request_body, assistant_type, user_id, AZURE_OPENAI_MODEL)
     except Exception as e:
-        logging.exception("Exception in /conversation_with_math_assistant")
+        logging.exception("Exception in /conversation_with_assistant")
         return jsonify({"error": str(e)}), 500
     
 ## Conversation History API ## 
