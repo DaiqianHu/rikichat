@@ -3,6 +3,7 @@ import json
 import os
 import time
 import logging
+import requests
 from datetime import datetime
 from typing import Iterable, Optional
 
@@ -100,9 +101,10 @@ def conversation_internal_with_assistant(client : AzureOpenAI, request_body : an
         )
 
         if DEBUG_LOGGING: logging.debug(f"processing ...")
+        available_functions = {"search_google": google_search}
 
         # poll the run till completion
-        poll_run_till_completion(client, thread_id, run.id, {}, 10, 3)
+        poll_run_till_completion(client, thread_id, run.id, available_functions, 10, 3)
 
         # retrieve and print messages
         return retrieve_messages_and_respond(client, thread_id, history_metadata)
@@ -117,11 +119,30 @@ def retrieve_and_create_assistant(client : AzureOpenAI, assistant_type : str, de
     if assistant_type == "math":
         assistant_name = "Math Tutor"
         assistant_instructions = "You are a personal math tutor. Write and run code to answer math questions."
-        code_interpreter_type = "code_interpreter"
+        tools = [{"type": "code_interpreter"}]
     elif assistant_type == "web":
         assistant_name = "Web Assistant"
         assistant_instructions = "You are a personal web assistant. Write and run code to answer web development questions."
-        code_interpreter_type = "code_interpreter"
+        tools = [
+            {"type": "code_interpreter"},
+            {
+                "type": "function",
+                "function": {
+                    "name": "search_google",
+                    "description": "Searches google to get up-to-date information from the web.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "type": "string",
+                                "description": "The search query",
+                            }
+                        },
+                        "required": ["query"],
+                    },
+                },
+            }
+        ]
 
     # retrieve assistants and find the assistant
     assistants = client.beta.assistants.list()
@@ -136,7 +157,7 @@ def retrieve_and_create_assistant(client : AzureOpenAI, assistant_type : str, de
         assistant = client.beta.assistants.create(
             name=assistant_name,
             instructions=assistant_instructions,
-            tools=[{"type": code_interpreter_type}],
+            tools=tools,
             model=deployment_model,
         )
         logging.debug(f"{assistant_name}: {assistant}")
@@ -263,3 +284,29 @@ def retrieve_messages_and_respond(
     }
 
     return jsonify(response_obj), 200
+
+def google_search(query: str) -> list:
+    """
+    Perform a google search against the given query
+
+    @param query: Search query
+    @return: List of search results
+
+    """
+    search_url = "https://www.googleapis.com/customsearch/v1"
+    search_engine_id = os.environ.get("AZURE_GOOGLE_SEARCH_ENGINE_ID")
+    api_key = os.environ.get("AZURE_GOOGLE_SEARCH_KEY")
+
+    params = {  "key": api_key,
+                "cx": search_engine_id,
+                "q": query}
+    response = requests.get(search_url, params=params)
+
+    search_results = response.json()
+
+    output = []
+
+    for result in search_results["items"]:
+        output.append({"title": result["title"], "link": result["link"], "snippet": result["snippet"]})
+
+    return json.dumps(output)
