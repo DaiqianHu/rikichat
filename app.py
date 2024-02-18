@@ -805,6 +805,9 @@ def delete_conversation():
 def list_conversations():
     offset = request.args.get("offset", 0)
     authenticated_user = get_authenticated_user_details(request_headers=request.headers)
+    if DEBUG_LOGGING:
+        logging.debug(f"Authenticated User: {authenticated_user}")
+
     user_id = authenticated_user['user_principal_id']
 
     ## get the conversations from cosmos
