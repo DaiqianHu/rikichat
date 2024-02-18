@@ -34,7 +34,7 @@ def conversation_internal_with_assistant(client : AzureOpenAI, request_body : an
     global personal_assistants
     if DEBUG_LOGGING: 
         global log_file
-        log_file = open("webserver.log", "w")
+        log_file = open("./images/webserver.log", "w")
     
     try:
         assistant = personal_assistants.get(assistant_type)
