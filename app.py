@@ -7,7 +7,7 @@ import copy
 from openai import AzureOpenAI
 from azure.identity import ChainedTokenCredential, ManagedIdentityCredential, AzureCliCredential, DefaultAzureCredential
 from base64 import b64encode
-from flask import Flask, Response, request, jsonify, send_from_directory
+from flask import Flask, Response, request, jsonify, send_from_directory, redirect, session, url_for
 from dotenv import load_dotenv
 from pydub import AudioSegment
 from pydub.utils import mediainfo
@@ -931,6 +931,19 @@ def get_frontend_settings():
         logging.exception("Exception in /frontend_settings")
         return jsonify({"error": str(e)}), 500  
     
+# Logout route
+@app.route('/logout')
+def logout():
+    # Revoke token (if applicable)
+    # Example: revoke_token()
+    tenant_id = os.environ.get("AUTH_TENANT_ID")
+
+    # Redirect to Azure AD logout endpoint
+    return redirect("https://login.microsoftonline.com/{tenant_id}/oauth2/logout?post_logout_redirect_uri={redirect_uri}".format(
+        tenant_id=tenant_id,
+        redirect_uri=url_for('index', _external=True)
+    ))
+
 @app.route("/speech_to_text", methods=["POST"])
 def speech_to_text():
     try:
