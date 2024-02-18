@@ -91,14 +91,13 @@ def conversation_internal_with_assistant(client : AzureOpenAI, request_body : an
         # create a new message in the assistant thread
         client.beta.threads.messages.create(thread_id=thread_id, role="user", content=content)
 
+        if DEBUG_LOGGING: logging.debug(f"Instruction {assistant.instructions}")
+
         # create a new run in the assistant thread
         run = client.beta.threads.runs.create(
             assistant_id=assistant.id,
             thread_id=thread_id,
-            instructions="Please address the user as Jane Doe. The user has a premium account. Be assertive, accurate, and polite. Ask if the user has further questions. "
-            + "The current date and time is: "
-            + datetime.now().strftime("%x %X")
-            + ".",
+            instructions=assistant.instructions
         )
 
         if DEBUG_LOGGING: logging.debug(f"processing ...")
@@ -123,7 +122,9 @@ def retrieve_and_create_assistant(client : AzureOpenAI, assistant_type : str, de
         tools = [{"type": "code_interpreter"}]
     elif assistant_type == "web":
         assistant_name = "Web Assistant"
-        assistant_instructions = "You are a personal web assistant. Write and run code to answer web development questions."
+        assistant_instructions = """You are an assistant designed to help people answer questions.
+            You have access to query the web using Google Search. You should call google search whenever a question requires up to date information or could benefit from web data.
+            """
         tools = [
             {"type": "code_interpreter"},
             {

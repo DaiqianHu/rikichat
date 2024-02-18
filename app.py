@@ -33,7 +33,6 @@ telemetry_client = TelemetryClient(os.environ.get("APPINSIGHTS_INSTRUMENTATIONKE
 def index():
     # Log debug message to Application Insights
     telemetry_client.track_trace('Accessing Home Page', severity=logging.DEBUG)
-    telemetry_client.flush()
 
     return app.send_static_file("index.html")
 
