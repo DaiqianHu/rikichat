@@ -24,14 +24,7 @@ app = Flask(__name__, static_folder="static")
 # Static Files
 @app.route("/")
 def index():
-    try:
-        authenticated_user = get_authenticated_user_details(request_headers=request.headers)
-        user_id = authenticated_user['user_principal_id']
-
-        if DEBUG_LOGGING: logging.debug(f"Authenticated user: {user_id}")
-        return app.send_static_file("index.html")
-    except:
-        logout()
+    return app.send_static_file("index.html")
 
 @app.route("/favicon.ico")
 def favicon():
