@@ -20,7 +20,6 @@ DEBUG_LOGGING = DEBUG.lower() == "true"
 if DEBUG_LOGGING:
     logging.basicConfig(level=logging.DEBUG)
     logger = logging.getLogger(__name__)
-    log_file = None
 
 # define a dictionary to map with assistant name and assistant object
 assistant_types = { 'web', 'math' }
@@ -32,9 +31,6 @@ personal_assistant_threads = {}
 def conversation_internal_with_assistant(client : AzureOpenAI, request_body : any, assistant_type : str, user_id : str, deployment_model : str) :
     # retrieve the assistant or create a new one
     global personal_assistants
-    if DEBUG_LOGGING: 
-        global log_file
-        log_file = open("webserver.log", "w")
     
     try:
         assistant = personal_assistants.get(assistant_type)
@@ -45,8 +41,6 @@ def conversation_internal_with_assistant(client : AzureOpenAI, request_body : an
         logging.error(f"An error occurred: {e}")
         # Handle error appropriately
         return jsonify({"error": str(e)}), 500
-
-    if DEBUG_LOGGING: log_file.write(f"assistant_type: {assistant_type}, deployment_model: {deployment_model}, user_id: {user_id}\n")
     
     # get the user messages and history metadata
     request_messages = request_body["messages"]
@@ -87,9 +81,7 @@ def conversation_internal_with_assistant(client : AzureOpenAI, request_body : an
 
             if DEBUG_LOGGING: logging.debug(f"Created a new thread: {thread_id}")
 
-        if DEBUG_LOGGING: 
-            logging.debug(f"thread_id: {thread_id}")
-            log_file.write(f"thread_id: {thread_id}\n")
+        if DEBUG_LOGGING: logging.debug(f"thread_id: {thread_id}")
     except Exception as e:
         logging.error(f"An error occurred: {e}")
         # Handle error appropriately
@@ -99,9 +91,7 @@ def conversation_internal_with_assistant(client : AzureOpenAI, request_body : an
         # create a new message in the assistant thread
         client.beta.threads.messages.create(thread_id=thread_id, role="user", content=content)
 
-        if DEBUG_LOGGING: 
-            logging.debug(f"Instruction {assistant.instructions}")
-            log_file.write(f"Instruction {assistant.instructions}\n")
+        if DEBUG_LOGGING: logging.debug(f"Instruction {assistant.instructions}")
 
         # create a new run in the assistant thread
         run = client.beta.threads.runs.create(
@@ -110,16 +100,11 @@ def conversation_internal_with_assistant(client : AzureOpenAI, request_body : an
             instructions=assistant.instructions
         )
 
-        if DEBUG_LOGGING: 
-            logging.debug(f"processing ...")
-            log_file.write(f"processing ...\n")
+        if DEBUG_LOGGING: logging.debug(f"processing ...")
         available_functions = {"search_google": google_search}
 
         # poll the run till completion
         poll_run_till_completion(client, thread_id, run.id, available_functions, 10, 3)
-
-        if DEBUG_LOGGING: 
-            log_file.flush()
 
         # retrieve and print messages
         return retrieve_messages_and_respond(client, thread_id, history_metadata)
@@ -129,11 +114,7 @@ def conversation_internal_with_assistant(client : AzureOpenAI, request_body : an
         return jsonify({"error": str(e)}), 500
     
 def retrieve_and_create_assistant(client : AzureOpenAI, assistant_type : str, deployment_model : str) :
-    if DEBUG_LOGGING: global log_file
-
-    if DEBUG_LOGGING: 
-        logging.debug(f"assistant_type: {assistant_type}")
-        log_file.write(f"assistant_type: {assistant_type}\n")
+    if DEBUG_LOGGING: logging.debug(f"assistant_type: {assistant_type}")
 
     if assistant_type == "math":
         assistant_name = "Math Tutor"
@@ -165,10 +146,6 @@ def retrieve_and_create_assistant(client : AzureOpenAI, assistant_type : str, de
             }
         ]
 
-    if DEBUG_LOGGING:
-        log_file.write(f"assistant_name: {assistant_name}\n")
-        log_file.write(f"assistant_instructions: {assistant_instructions}\n")
-
     # retrieve assistants and find the assistant
     assistants = client.beta.assistants.list()
     assistant = None
@@ -186,10 +163,8 @@ def retrieve_and_create_assistant(client : AzureOpenAI, assistant_type : str, de
             model=deployment_model,
         )
         logging.debug(f"{assistant_name}: {assistant}")
-        log_file.write(f"{assistant_name}: {assistant}\n")
     else:
         logging.debug(f"{assistant_name} already exists: {assistant}")
-        log_file.write(f"{assistant_name} already exists: {assistant}\n")
 
     return assistant
 
@@ -214,8 +189,6 @@ def poll_run_till_completion(
 
     """
 
-    if DEBUG_LOGGING: global log_file
-
     if (client is None and thread_id is None) or run_id is None:
         if DEBUG_LOGGING: logging.error("Client, Thread ID and Run ID are required.")
         raise Exception("Client, Thread ID and Run ID are required.")
@@ -224,9 +197,7 @@ def poll_run_till_completion(
     while cnt < max_steps:
         run = client.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run_id)
         
-        if DEBUG_LOGGING: 
-            logging.debug(f"Poll {cnt}: {run.status}")
-            log_file.write(f"Poll {cnt}: {run.status}\n")
+        if DEBUG_LOGGING: logging.debug(f"Poll {cnt}: {run.status}")
         cnt += 1
         if run.status == "requires_action":
             tool_responses = []
@@ -251,9 +222,7 @@ def poll_run_till_completion(
             if DEBUG_LOGGING: logging.error("Run failed.")
             raise Exception("Run failed.")
         if run.status == "completed":
-            if DEBUG_LOGGING: 
-                logging.debug("Run completed.")
-                log_file.write("Run completed.\n")
+            if DEBUG_LOGGING: logging.debug("Run completed.")
             break
         time.sleep(wait)
 
@@ -270,8 +239,6 @@ def retrieve_messages_and_respond(
     @return: Messages object
 
     """
-
-    if DEBUG_LOGGING: global log_file
 
     if client is None and thread_id is None:
         print("Client and Thread ID are required.")
@@ -302,9 +269,7 @@ def retrieve_messages_and_respond(
             
             assistantContent += f"<img src=\"./images/{thread_id}.jpg\" alt=\"Example image\" width=\"100%\" height=\"auto\" display=\"block\" />"
     
-    if DEBUG_LOGGING: 
-        logging.debug(f"Assistant:\n{assistantContent}\n")
-        log_file.write(f"Assistant:\n{assistantContent}\n")
+    if DEBUG_LOGGING: logging.debug(f"Assistant:\n{assistantContent}\n")
 
     response_obj = {
         "id": message.id,
@@ -333,10 +298,6 @@ def google_search(query: str) -> list:
     search_url = "https://www.googleapis.com/customsearch/v1"
     search_engine_id = os.environ.get("AZURE_GOOGLE_SEARCH_ENGINE_ID")
     api_key = os.environ.get("AZURE_GOOGLE_SEARCH_KEY")
-
-    if DEBUG_LOGGING:
-        global log_file
-        log_file.write(f"google query: {query}\n")
 
     params = {  "key": api_key,
                 "cx": search_engine_id,
