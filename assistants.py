@@ -19,6 +19,7 @@ DEBUG = os.environ.get("DEBUG", "false")
 DEBUG_LOGGING = DEBUG.lower() == "true"
 if DEBUG_LOGGING:
     logging.basicConfig(level=logging.DEBUG)
+    logger = logging.getLogger(__name__)
 
 # define a dictionary to map with assistant name and assistant object
 assistant_types = { 'web', 'math' }

@@ -8,6 +8,7 @@ from openai import AzureOpenAI
 from azure.identity import ChainedTokenCredential, ManagedIdentityCredential, AzureCliCredential, DefaultAzureCredential
 from base64 import b64encode
 from flask import Flask, Response, request, jsonify, send_from_directory, redirect, session, url_for
+from applicationinsights import TelemetryClient
 from dotenv import load_dotenv
 from pydub import AudioSegment
 from pydub.utils import mediainfo
@@ -21,9 +22,19 @@ load_dotenv()
 
 app = Flask(__name__, static_folder="static")
 
+# Generate a secure random key
+app.secret_key = os.urandom(24)
+
+# Initialize Application Insights
+telemetry_client = TelemetryClient(os.environ.get("APPINSIGHTS_INSTRUMENTATIONKEY"))
+
 # Static Files
 @app.route("/")
 def index():
+    # Log debug message to Application Insights
+    telemetry_client.track_trace('Accessing Home Page', severity=logging.DEBUG)
+    telemetry_client.flush()
+
     return app.send_static_file("index.html")
 
 @app.route("/favicon.ico")
@@ -43,6 +54,7 @@ DEBUG = os.environ.get("DEBUG", "false")
 DEBUG_LOGGING = DEBUG.lower() == "true"
 if DEBUG_LOGGING:
     logging.basicConfig(level=logging.DEBUG)
+    logger = logging.getLogger(__name__)
 
 # MSI Token
 AzureOpenAIAccessToken = None
@@ -654,6 +666,8 @@ def conversation():
     assistant_type = request.args.get('assistants')
     request_body = request.json
 
+    telemetry_client.track_trace(f'conversation from {user_id}', severity=logging.DEBUG)
+
     if (assistant_type is None):
         return conversation_internal(request_body)
     elif assistant_type not in assistants.assistant_types:
@@ -937,6 +951,9 @@ def get_frontend_settings():
 # Logout route
 @app.route('/logout')
 def logout():
+    # Clear session
+    session.clear()
+
     # Revoke token (if applicable)
     # Example: revoke_token()
     tenant_id = os.environ.get("AUTH_TENANT_ID")
