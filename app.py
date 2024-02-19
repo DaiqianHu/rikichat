@@ -8,7 +8,6 @@ from openai import AzureOpenAI
 from azure.identity import ChainedTokenCredential, ManagedIdentityCredential, AzureCliCredential, DefaultAzureCredential
 from base64 import b64encode
 from flask import Flask, Response, request, jsonify, send_from_directory, redirect, session, url_for
-from applicationinsights import TelemetryClient
 from dotenv import load_dotenv
 from pydub import AudioSegment
 from pydub.utils import mediainfo
@@ -25,15 +24,9 @@ app = Flask(__name__, static_folder="static")
 # Generate a secure random key
 app.secret_key = os.urandom(24)
 
-# Initialize Application Insights
-telemetry_client = TelemetryClient(os.environ.get("APPINSIGHTS_INSTRUMENTATIONKEY"))
-
 # Static Files
 @app.route("/")
 def index():
-    # Log debug message to Application Insights
-    telemetry_client.track_trace('Accessing Home Page', severity=logging.DEBUG)
-
     logging.error("Home Index")
 
     return app.send_static_file("index.html")
@@ -592,13 +585,13 @@ def stream_without_data(response, history_metadata={}):
         yield format_as_ndjson(response_obj)
 
 def conversation_without_data(request_body):
-    if DEBUG_LOGGING: logging.debug("Using MSI Authentication")
+    logging.error("Using MSI Authentication")
 
     # Check if Azure token is still valid
     global AzureOpenAIAccessToken
     if not AzureOpenAIAccessToken or datetime.datetime.fromtimestamp(AzureOpenAIAccessToken.expires_on) < datetime.datetime.now():
         AzureOpenAIAccessToken = Credential.get_token("https://cognitiveservices.azure.com")
-        if DEBUG_LOGGING: logging.debug(f"Token expires at: {datetime.datetime.fromtimestamp(AzureOpenAIAccessToken.expires_on)}")
+        logging.error(f"Token expires at: {datetime.datetime.fromtimestamp(AzureOpenAIAccessToken.expires_on)}")
 
     client = AzureOpenAI(api_key = AzureOpenAIAccessToken.token, azure_endpoint = AZURE_OPENAI_ENDPOINT, api_version = AZURE_OPENAI_PREVIEW_API_VERSION)
 
@@ -667,9 +660,10 @@ def conversation():
     assistant_type = request.args.get('assistants')
     request_body = request.json
 
-    telemetry_client.track_trace(f'conversation from {user_id}', severity=logging.DEBUG)
+    logging.error(f"Assistant Type: {assistant_type}")
 
     if (assistant_type is None):
+        logging.error(f"request args: {request.args}")
         return conversation_internal(request_body)
     elif assistant_type not in assistants.assistant_types:
         return jsonify({"error": "Invalid assistant type"}), 400
@@ -693,7 +687,7 @@ def conversation_with_assistant(request_body, assistant_type, user_id):
         global AzureOpenAIAccessToken
         if not AzureOpenAIAccessToken or datetime.datetime.fromtimestamp(AzureOpenAIAccessToken.expires_on) < datetime.datetime.now():
             AzureOpenAIAccessToken = Credential.get_token("https://cognitiveservices.azure.com")
-            if DEBUG_LOGGING: logging.debug(f"Token expires at: {datetime.datetime.fromtimestamp(AzureOpenAIAccessToken.expires_on)}")
+            logging.error(f"Token expires at: {datetime.datetime.fromtimestamp(AzureOpenAIAccessToken.expires_on)}")
 
         client = AzureOpenAI(api_key = AzureOpenAIAccessToken.token, azure_endpoint = AZURE_OPENAI_ENDPOINT, api_version = AZURE_OPENAI_PREVIEW_API_VERSION)
         
