@@ -50,10 +50,10 @@ def conversation_internal_with_assistant(client : AzureOpenAI, request_body : an
     latest_message = request_messages[-1]
     content = latest_message["content"]
 
-    if DEBUG_LOGGING: logging.debug(f"user_id: {user_id}")
-    # if DEBUG_LOGGING: logging.debug(f"request_body: {request_body}")    
-    if DEBUG_LOGGING: logging.debug(f"content: {content}")
-    if DEBUG_LOGGING: logging.debug(f"history_metadata: {history_metadata}")
+    logging.error(f"user_id: {user_id}")
+    # logging.error(f"request_body: {request_body}")    
+    logging.error(f"content: {content}")
+    logging.error(f"history_metadata: {history_metadata}")
 
     # retrieve the assistant thread or create a new one
     global personal_assistant_threads
@@ -66,22 +66,22 @@ def conversation_internal_with_assistant(client : AzureOpenAI, request_body : an
             newThread = False
         else:
             thread_id = None
-            if DEBUG_LOGGING: logging.debug(f"No existing thread found by {user_id} for {assistant_type}")
+            logging.error(f"No existing thread found by {user_id} for {assistant_type}")
 
         if thread_id is not None and len(request_messages) == 1:
             # delete the old thread
             client.beta.threads.delete(thread_id)
             newThread = True
-            if DEBUG_LOGGING: logging.debug(f"Deleted the old thread: {thread_id}")
+            logging.error(f"Deleted the old thread: {thread_id}")
 
         if newThread:
             thread = client.beta.threads.create()
             thread_id = thread.id
             personal_assistant_threads[user_id] = { assistant_type: thread_id }
 
-            if DEBUG_LOGGING: logging.debug(f"Created a new thread: {thread_id}")
+            logging.error(f"Created a new thread: {thread_id}")
 
-        if DEBUG_LOGGING: logging.debug(f"thread_id: {thread_id}")
+        logging.error(f"thread_id: {thread_id}")
     except Exception as e:
         logging.error(f"An error occurred: {e}")
         # Handle error appropriately
@@ -91,7 +91,7 @@ def conversation_internal_with_assistant(client : AzureOpenAI, request_body : an
         # create a new message in the assistant thread
         client.beta.threads.messages.create(thread_id=thread_id, role="user", content=content)
 
-        if DEBUG_LOGGING: logging.debug(f"Instruction {assistant.instructions}")
+        logging.error(f"Instruction {assistant.instructions}")
 
         # create a new run in the assistant thread
         run = client.beta.threads.runs.create(
@@ -100,7 +100,7 @@ def conversation_internal_with_assistant(client : AzureOpenAI, request_body : an
             instructions=assistant.instructions
         )
 
-        if DEBUG_LOGGING: logging.debug(f"processing ...")
+        logging.error(f"processing ...")
         available_functions = {"search_google": google_search}
 
         # poll the run till completion
@@ -114,7 +114,7 @@ def conversation_internal_with_assistant(client : AzureOpenAI, request_body : an
         return jsonify({"error": str(e)}), 500
     
 def retrieve_and_create_assistant(client : AzureOpenAI, assistant_type : str, deployment_model : str) :
-    if DEBUG_LOGGING: logging.debug(f"assistant_type: {assistant_type}")
+    logging.error(f"assistant_type: {assistant_type}")
 
     if assistant_type == "math":
         assistant_name = "Math Tutor"
@@ -197,7 +197,7 @@ def poll_run_till_completion(
     while cnt < max_steps:
         run = client.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run_id)
         
-        if DEBUG_LOGGING: logging.debug(f"Poll {cnt}: {run.status}")
+        logging.error(f"Poll {cnt}: {run.status}")
         cnt += 1
         if run.status == "requires_action":
             tool_responses = []
@@ -222,7 +222,7 @@ def poll_run_till_completion(
             if DEBUG_LOGGING: logging.error("Run failed.")
             raise Exception("Run failed.")
         if run.status == "completed":
-            if DEBUG_LOGGING: logging.debug("Run completed.")
+            logging.error("Run completed.")
             break
         time.sleep(wait)
 
@@ -254,7 +254,7 @@ def retrieve_messages_and_respond(
     for item in message.content:
         # Determine the content type
         if isinstance(item, MessageContentText):
-            if DEBUG_LOGGING: logging.debug(f"{message.role}:\n{item.text.value}\n")
+            logging.error(f"{message.role}:\n{item.text.value}\n")
             assistantContent += item.text.value
         elif isinstance(item, MessageContentImageFile):
             # Retrieve image from file id
@@ -265,11 +265,11 @@ def retrieve_messages_and_respond(
             with open(f"./images/{thread_id}.jpg", "wb") as img_file:
                 img_file.write(data_in_bytes)
 
-            if DEBUG_LOGGING: logging.debug(f"Image saved to file: ./images/{thread_id}.jpg")
+            logging.error(f"Image saved to file: ./images/{thread_id}.jpg")
             
             assistantContent += f"<img src=\"./images/{thread_id}.jpg\" alt=\"Example image\" width=\"100%\" height=\"auto\" display=\"block\" />"
     
-    if DEBUG_LOGGING: logging.debug(f"Assistant:\n{assistantContent}\n")
+    logging.error(f"Assistant:\n{assistantContent}\n")
 
     response_obj = {
         "id": message.id,

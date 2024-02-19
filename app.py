@@ -34,8 +34,7 @@ def index():
     # Log debug message to Application Insights
     telemetry_client.track_trace('Accessing Home Page', severity=logging.DEBUG)
 
-    if DEBUG_LOGGING:
-        logging.info("Accessing Home Page")
+    logging.error("Home Index")
 
     return app.send_static_file("index.html")
 
