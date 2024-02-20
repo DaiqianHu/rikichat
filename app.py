@@ -660,26 +660,25 @@ def conversation():
     assistant_type = request.args.get('assistants')
     request_body = request.json
 
-    logging.error(f"Assistant Type: {assistant_type}")
+    logging.error(f"Assistant Type: {assistant_type}, user_id: {user_id}")
 
+    return conversation_internal(request_body, assistant_type, user_id)
+
+def conversation_internal(request_body, assistant_type, user_id=None):
     if (assistant_type is None):
-        logging.error(f"request args: {request.args}")
-        return conversation_internal(request_body)
+        try:
+            use_data = should_use_data()
+            if use_data:
+                return conversation_with_data(request_body)
+            else:
+                return conversation_without_data(request_body)
+        except Exception as e:
+            logging.exception("Exception in /conversation")
+            return jsonify({"error": str(e)}), 500
     elif assistant_type not in assistants.assistant_types:
         return jsonify({"error": "Invalid assistant type"}), 400
     
     return conversation_with_assistant(request_body, assistant_type, user_id)
-
-def conversation_internal(request_body):
-    try:
-        use_data = should_use_data()
-        if use_data:
-            return conversation_with_data(request_body)
-        else:
-            return conversation_without_data(request_body)
-    except Exception as e:
-        logging.exception("Exception in /conversation")
-        return jsonify({"error": str(e)}), 500
 
 def conversation_with_assistant(request_body, assistant_type, user_id):
     try:
@@ -735,7 +734,11 @@ def add_conversation():
         request_body = request.json
         history_metadata['conversation_id'] = conversation_id
         request_body['history_metadata'] = history_metadata
-        return conversation_internal(request_body)
+        assistant_type = request.args.get('assistants')
+
+        logging.error(f"Assistant Type: {assistant_type}, conversation_id: {conversation_id}")
+
+        return conversation_internal(request_body, assistant_type, user_id)
        
     except Exception as e:
         logging.exception("Exception in /history/generate")
