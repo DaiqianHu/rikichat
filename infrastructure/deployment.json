@@ -615,6 +615,7 @@
                         "isZoneRedundant": false
                     }
                 ],
+                "enableFreeTier": true,
                 "databaseAccountOfferType": "Standard",
                 "enableAutomaticFailover": false,
                 "enableMultipleWriteLocations": false
