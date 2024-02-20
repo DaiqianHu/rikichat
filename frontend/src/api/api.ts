@@ -122,7 +122,11 @@ export const historyGenerate = async (options: ConversationRequest, abortSignal:
             messages: options.messages
         })
     }
-    const response = await fetch("/history/generate", {
+    const queryParameters = new URLSearchParams(window.location.search);
+    const assistantParameter = queryParameters.get('assistants'); 
+
+    const apiEndpoint = assistantParameter ? `/history/generate?assistants=${assistantParameter}` : '/history/generate';
+    const response = await fetch(apiEndpoint, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
