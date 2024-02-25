@@ -22,7 +22,7 @@ if DEBUG_LOGGING:
     logger = logging.getLogger(__name__)
 
 # define a dictionary to map with assistant name and assistant object
-assistant_types = { 'web', 'math' }
+assistant_types = { 'web', 'math', 'dalle' }
 personal_assistants = {}
 
 # define a dictionary to map with assistant name, user_id and thread_id, the assistant_name and user_id are the key

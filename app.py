@@ -16,6 +16,7 @@ from backend.auth.auth_utils import get_authenticated_user_details
 from backend.history.cosmosdbservice import CosmosConversationClient
 
 import assistants
+import imagegeneration
 
 load_dotenv()
 
@@ -81,6 +82,8 @@ AZURE_SEARCH_STRICTNESS = os.environ.get("AZURE_SEARCH_STRICTNESS", SEARCH_STRIC
 AZURE_OPENAI_RESOURCE = os.environ.get("AZURE_OPENAI_RESOURCE")
 AZURE_OPENAI_MODEL = os.environ.get("AZURE_OPENAI_MODEL")
 AZURE_OPENAI_ENDPOINT = os.environ.get("AZURE_OPENAI_ENDPOINT")
+AZURE_OPENAI_DALLE_ENDPOINT = os.environ.get("AZURE_OPENAI_DALLE_ENDPOINT")
+AZURE_OPENAI_DALLE_MODEL = os.environ.get("AZURE_OPENAI_DALLE_MODEL")
 AZURE_OPENAI_KEY = os.environ.get("AZURE_OPENAI_KEY")
 AZURE_OPENAI_TEMPERATURE = os.environ.get("AZURE_OPENAI_TEMPERATURE", 0)
 AZURE_OPENAI_TOP_P = os.environ.get("AZURE_OPENAI_TOP_P", 1.0)
@@ -688,9 +691,12 @@ def conversation_with_assistant(request_body, assistant_type, user_id):
             AzureOpenAIAccessToken = Credential.get_token("https://cognitiveservices.azure.com")
             logging.error(f"Token expires at: {datetime.datetime.fromtimestamp(AzureOpenAIAccessToken.expires_on)}")
 
-        client = AzureOpenAI(api_key = AzureOpenAIAccessToken.token, azure_endpoint = AZURE_OPENAI_ENDPOINT, api_version = AZURE_OPENAI_PREVIEW_API_VERSION)
-        
-        return assistants.conversation_internal_with_assistant(client, request_body, assistant_type, user_id, AZURE_OPENAI_MODEL)
+        if assistant_type == "dalle":
+            client = AzureOpenAI(api_key = AzureOpenAIAccessToken.token, azure_endpoint = AZURE_OPENAI_DALLE_ENDPOINT, api_version = AZURE_OPENAI_PREVIEW_API_VERSION)
+            return imagegeneration.conversation_internal_with_dalle(client, request_body, AZURE_OPENAI_DALLE_MODEL)
+        else:
+            client = AzureOpenAI(api_key = AzureOpenAIAccessToken.token, azure_endpoint = AZURE_OPENAI_ENDPOINT, api_version = AZURE_OPENAI_PREVIEW_API_VERSION)
+            return assistants.conversation_internal_with_assistant(client, request_body, assistant_type, user_id, AZURE_OPENAI_MODEL)
     except Exception as e:
         logging.exception("Exception in /conversation_with_assistant")
         return jsonify({"error": str(e)}), 500
